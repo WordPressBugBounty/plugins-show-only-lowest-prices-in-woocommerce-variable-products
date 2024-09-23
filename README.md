@@ -1,0 +1,1 @@
+# plugins-show-only-lowest-prices-in-woocommerce-variable-products
