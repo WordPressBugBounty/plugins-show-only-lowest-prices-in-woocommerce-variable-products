@@ -3,7 +3,7 @@ Contributors: fernandot
 Donate link: https://www.paypal.me/fernandotellado
 Tags: woocommerce, variations, variable products, price, prices, sale products, sales
 Requires at least: 4.0
-Tested up to: 6.6.1
+Tested up to: 6.7.1
 Stable tag: trunk
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -35,6 +35,9 @@ Solve an issue related to latests versions of WooCommerce that shows variable pr
 2. WooCommerce variable product after activation.
 
 == Changelog ==
+= 1.0.7 =
+* Tested up to WordPress 6.7.1
+* Tested up to WooCommerce 9.5.1
 
 = 1.0.6 =
 * Tested up to WordPress 6.6.1

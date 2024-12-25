@@ -4,15 +4,15 @@
  Plugin URI: https://servicios.ayudawp.com/
  Description: Shows only the lowest price and sale in variable WooCommerce products.
  Author: Fernando Tellado
- Version: 1.0.6
+ Version: 1.0.7
  Author URI: https://ayudawp.com
  Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  Domain Path: /languages
  Requires Plugins: woocommerce
  Requires at least: 4.0
- Tested up to: 6.6.1
+ Tested up to: 6.7.1
  WC requires at least: 3.0
- WC tested up to: 9.2.3
+ WC tested up to: 9.5.1
  License: GPLv2+
 */
 /* This is for security */
