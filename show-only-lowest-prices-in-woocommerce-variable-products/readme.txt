@@ -4,7 +4,7 @@ Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.0
+Stable tag: 2.0.1
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,9 @@ Yes! Version 2.0 includes full compatibility with WooCommerce High-Performance O
 3. New settings page with customization options integrated into WooCommerce admin menu
 
 == Changelog ==
+
+= 2.0.1 =
+* Solved load translations too early notice
 
 = 2.0 =
 * **Major update with new features and improvements**

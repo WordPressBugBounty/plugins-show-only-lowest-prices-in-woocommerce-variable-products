@@ -4,7 +4,7 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.0
+ * Version: 2.0.1
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Domain Path: /languages
@@ -40,9 +40,9 @@ class AyudaWP_Lowest_Prices {
     private static $instance = null;
 
     /**
-     * Plugin options
+     * Plugin options - lazy loaded
      */
-    private $options;
+    private $options = null;
 
     /**
      * Get instance
@@ -55,31 +55,34 @@ class AyudaWP_Lowest_Prices {
     }
 
     /**
-     * Constructor
+     * Constructor - NO translations here
      */
     private function __construct() {
-        add_action( 'plugins_loaded', array( $this, 'ayudawp_init' ) );
+        // Declare HPOS compatibility EARLY - before WooCommerce init
+        add_action( 'before_woocommerce_init', array( $this, 'ayudawp_declare_hpos_compatibility' ) );
+        
+        // CRITICAL: Use 'init' instead of 'plugins_loaded' to ensure translations are ready
+        add_action( 'init', array( $this, 'ayudawp_init' ) );
         register_activation_hook( __FILE__, array( $this, 'ayudawp_activate' ) );
         register_deactivation_hook( __FILE__, array( $this, 'ayudawp_deactivate' ) );
     }
 
     /**
-     * Initialize plugin
+     * Initialize plugin - NOW on 'init' hook when translations are safe
      */
     public function ayudawp_init() {
-        // Check if WooCommerce is active
+        // Check if WooCommerce is active first
         if ( ! class_exists( 'WooCommerce' ) ) {
             add_action( 'admin_notices', array( $this, 'ayudawp_woocommerce_missing_notice' ) );
             return;
         }
 
-        // Text domain is automatically loaded by WordPress.org for hosted plugins
-
-        // Declare HPOS compatibility
-        add_action( 'before_woocommerce_init', array( $this, 'ayudawp_declare_hpos_compatibility' ) );
-
-        // Load options
-        $this->options = get_option( 'ayudawp_lowest_prices_options', $this->ayudawp_get_default_options() );
+        // Load text domain - NOW safe because we're in 'init'
+        load_plugin_textdomain( 
+            'show-only-lowest-prices-in-woocommerce-variable-products', 
+            false, 
+            dirname( AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME ) . '/languages' 
+        );
 
         // Initialize admin if in admin area
         if ( is_admin() ) {
@@ -97,9 +100,33 @@ class AyudaWP_Lowest_Prices {
     }
 
     /**
-     * Get default options
+     * Get options with lazy loading and safe defaults
+     * This ensures translations are only called when they're safe to use
      */
-    private function ayudawp_get_default_options() {
+    private function ayudawp_get_options() {
+        if ( null === $this->options ) {
+            // Get saved options first
+            $saved_options = get_option( 'ayudawp_lowest_prices_options', array() );
+            
+            // Default options WITHOUT translations (fallback values)
+            $default_options = array(
+                'prefix_text' => 'From', // Hardcoded fallback, will be translated when displayed
+                'show_prefix_same_price' => false,
+                'add_space_after_prefix' => true,
+                'custom_css_class' => 'ayudawp-lowest-price',
+                'hide_prefix_css' => false
+            );
+
+            // Merge saved options with defaults
+            $this->options = wp_parse_args( $saved_options, $default_options );
+        }
+        return $this->options;
+    }
+
+    /**
+     * Get default options for saving (with translations when safe)
+     */
+    private function ayudawp_get_default_options_for_saving() {
         return array(
             'prefix_text' => __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
             'show_prefix_same_price' => false,
@@ -110,13 +137,11 @@ class AyudaWP_Lowest_Prices {
     }
 
     /**
-     * Plugin activation
+     * Plugin activation - NO translations here
      */
     public function ayudawp_activate() {
-        // Set default options on activation
-        add_option( 'ayudawp_lowest_prices_options', $this->ayudawp_get_default_options() );
-        
-        // Set a transient to show activation notice
+        // Don't use any translated strings during activation
+        // Options will be set with proper defaults when first accessed
         set_transient( 'ayudawp_lowest_prices_activation_notice', true, 30 );
     }
 
@@ -124,7 +149,6 @@ class AyudaWP_Lowest_Prices {
      * Plugin deactivation
      */
     public function ayudawp_deactivate() {
-        // Clean up transients
         delete_transient( 'ayudawp_lowest_prices_activation_notice' );
     }
 
@@ -156,18 +180,21 @@ class AyudaWP_Lowest_Prices {
         $max_price = $product->get_variation_price( 'max', true );
         $suffix = $product->get_price_suffix();
 
-        // Get custom prefix text
-        $prefix = ! empty( $this->options['prefix_text'] ) ? $this->options['prefix_text'] : __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+        // Get options using lazy loading
+        $options = $this->ayudawp_get_options();
+
+        // Get custom prefix text with translation fallback
+        $prefix = ! empty( $options['prefix_text'] ) ? $options['prefix_text'] : __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
         
         // Add space after prefix if enabled
-        $space = $this->options['add_space_after_prefix'] ? ' ' : '';
+        $space = $options['add_space_after_prefix'] ? ' ' : '';
         
         // Get custom CSS class
-        $css_class = ! empty( $this->options['custom_css_class'] ) ? $this->options['custom_css_class'] : 'ayudawp-lowest-price';
+        $css_class = ! empty( $options['custom_css_class'] ) ? $options['custom_css_class'] : 'ayudawp-lowest-price';
 
         // If all variations have same price, decide whether to show prefix or not
         if ( $min_price === $max_price ) {
-            if ( $this->options['show_prefix_same_price'] ) {
+            if ( $options['show_prefix_same_price'] ) {
                 return '<span class="' . esc_attr( $css_class ) . '"><span class="ayudawp-prefix">' . esc_html( $prefix ) . '</span>' . $space . wc_price( $min_price ) . $suffix . '</span>';
             } else {
                 return '<span class="' . esc_attr( $css_class ) . '">' . wc_price( $min_price ) . $suffix . '</span>';
@@ -182,7 +209,8 @@ class AyudaWP_Lowest_Prices {
      * Add custom CSS to hide prefix if option is enabled
      */
     public function ayudawp_add_custom_css() {
-        if ( $this->options['hide_prefix_css'] ) {
+        $options = $this->ayudawp_get_options();
+        if ( $options['hide_prefix_css'] ) {
             echo '<style type="text/css">.ayudawp-prefix { display: none !important; }</style>' . "\n";
         }
     }
@@ -286,7 +314,8 @@ class AyudaWP_Lowest_Prices {
      * Prefix text callback
      */
     public function ayudawp_prefix_text_callback() {
-        $value = isset( $this->options['prefix_text'] ) ? $this->options['prefix_text'] : 'From';
+        $options = $this->ayudawp_get_options();
+        $value = isset( $options['prefix_text'] ) ? $options['prefix_text'] : __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
         echo '<input type="text" name="ayudawp_lowest_prices_options[prefix_text]" value="' . esc_attr( $value ) . '" class="regular-text" />';
         echo '<p class="description">' . esc_html__( 'Text to show before the lowest price. Leave empty to show no prefix.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
     }
@@ -295,7 +324,8 @@ class AyudaWP_Lowest_Prices {
      * Show prefix same price callback
      */
     public function ayudawp_show_prefix_same_price_callback() {
-        $checked = isset( $this->options['show_prefix_same_price'] ) && $this->options['show_prefix_same_price'];
+        $options = $this->ayudawp_get_options();
+        $checked = isset( $options['show_prefix_same_price'] ) && $options['show_prefix_same_price'];
         echo '<input type="checkbox" name="ayudawp_lowest_prices_options[show_prefix_same_price]" value="1" ' . checked( 1, $checked, false ) . ' />';
         echo '<p class="description">' . esc_html__( 'Show the prefix even when all variations have the same price.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
     }
@@ -304,7 +334,8 @@ class AyudaWP_Lowest_Prices {
      * Add space after prefix callback
      */
     public function ayudawp_add_space_after_prefix_callback() {
-        $checked = isset( $this->options['add_space_after_prefix'] ) && $this->options['add_space_after_prefix'];
+        $options = $this->ayudawp_get_options();
+        $checked = isset( $options['add_space_after_prefix'] ) && $options['add_space_after_prefix'];
         echo '<input type="checkbox" name="ayudawp_lowest_prices_options[add_space_after_prefix]" value="1" ' . checked( 1, $checked, false ) . ' />';
         echo '<p class="description">' . esc_html__( 'Add a space between the prefix and the price.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
     }
@@ -313,7 +344,8 @@ class AyudaWP_Lowest_Prices {
      * Custom CSS class callback
      */
     public function ayudawp_custom_css_class_callback() {
-        $value = isset( $this->options['custom_css_class'] ) ? $this->options['custom_css_class'] : 'ayudawp-lowest-price';
+        $options = $this->ayudawp_get_options();
+        $value = isset( $options['custom_css_class'] ) ? $options['custom_css_class'] : 'ayudawp-lowest-price';
         echo '<input type="text" name="ayudawp_lowest_prices_options[custom_css_class]" value="' . esc_attr( $value ) . '" class="regular-text" />';
         echo '<p class="description">' . esc_html__( 'CSS class to add to the price wrapper for custom styling.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
     }
@@ -322,7 +354,8 @@ class AyudaWP_Lowest_Prices {
      * Hide prefix CSS callback
      */
     public function ayudawp_hide_prefix_css_callback() {
-        $checked = isset( $this->options['hide_prefix_css'] ) && $this->options['hide_prefix_css'];
+        $options = $this->ayudawp_get_options();
+        $checked = isset( $options['hide_prefix_css'] ) && $options['hide_prefix_css'];
         echo '<input type="checkbox" name="ayudawp_lowest_prices_options[hide_prefix_css]" value="1" ' . checked( 1, $checked, false ) . ' />';
         echo '<p class="description">' . esc_html__( 'Hide the prefix using CSS (useful for maintaining structure while hiding visually).', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
     }
