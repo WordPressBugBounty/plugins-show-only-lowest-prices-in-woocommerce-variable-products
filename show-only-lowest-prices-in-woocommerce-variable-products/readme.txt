@@ -1,18 +1,18 @@
-=== WooCommerce - Show only lowest prices in variable products ===
+=== Show only lowest prices in variable products for WooCommerce ===
 Contributors: fernandot, ayudawp
 Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Clean up your WooCommerce variable product prices by showing only the lowest price instead of confusing price ranges. Now with customizable settings!
+Clean up your variable product prices by showing only the lowest price instead of confusing price ranges. Now with customizable settings!
 
 == Description ==
 
-Transform your WooCommerce store's pricing display and boost conversions by showing only what matters most to your customers: the lowest available price.
+Transform your store's pricing display and boost conversions by showing only what matters most to your customers: the lowest available price.
 
 Instead of showing confusing price ranges like "$10 - $50" that can overwhelm and confuse customers, this plugin displays clean, simple pricing that encourages purchases.
 
@@ -30,7 +30,7 @@ Instead of showing confusing price ranges like "$10 - $50" that can overwhelm an
 * Option to hide prefix when all variations have the same price
 * Custom CSS class support for advanced styling
 * No performance impact - lightweight and efficient
-* Translation ready with included .pot file
+* Translation ready
 * Full WooCommerce and WordPress compatibility
 
 **Perfect for:**
@@ -89,6 +89,14 @@ Yes! Version 2.0 includes full compatibility with WooCommerce High-Performance O
 
 == Changelog ==
 
+= 2.0.2 =
+* Fixed: Prefix text now properly uses translations when available
+* Fixed: Settings form no longer auto-activates checkboxes when saving
+* Improved: Better handling of default options on plugin activation
+* Improved: More reliable translation loading process
+* Removed: Deprecated load_plugin_textdomain() function
+* Removed: Domain Path header (no longer needed for WordPress.org plugins)
+
 = 2.0.1 =
 * Solved load translations too early notice
 
@@ -146,6 +154,9 @@ Yes! Version 2.0 includes full compatibility with WooCommerce High-Performance O
 * Initial release
 
 == Upgrade Notice ==
+
+= 2.0.2 =
+Bug fix release! Fixes prefix text translation issues and settings form behavior. Recommended update for all users.
 
 = 2.0 =
 Major update! New settings page with customization options, improved performance, and enhanced security. Backup your site before upgrading. Settings will be automatically migrated from the previous version.

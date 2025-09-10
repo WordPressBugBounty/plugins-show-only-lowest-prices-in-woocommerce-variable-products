@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall script for WooCommerce - Show only lowest prices in variable products
+ * Uninstall script for Show only lowest prices in variable products for WooCommerce
  *
  * @package AyudaWP_Lowest_Prices
  */

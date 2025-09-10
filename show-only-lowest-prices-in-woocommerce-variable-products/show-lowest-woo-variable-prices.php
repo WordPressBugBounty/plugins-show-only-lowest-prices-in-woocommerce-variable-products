@@ -1,19 +1,18 @@
 <?php
 /**
- * Plugin Name: WooCommerce - Show only lowest prices in variable products
+ * Plugin Name: Show only lowest prices in variable products for WooCommerce
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
- * Domain Path: /languages
- * Requires Plugins: woocommerce
+* Requires Plugins: woocommerce
  * Requires at least: 5.0
- * Tested up to: 6.8
+ * Tested up to: 6.8.2
  * Requires PHP: 7.4
  * WC requires at least: 4.0
- * WC tested up to: 10.0.4
+ * WC tested up to: 10.1.2
  * License: GPLv2+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -24,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.0' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.0.2' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -108,9 +107,11 @@ class AyudaWP_Lowest_Prices {
             // Get saved options first
             $saved_options = get_option( 'ayudawp_lowest_prices_options', array() );
             
-            // Default options WITHOUT translations (fallback values)
+            // Default options - use translation if available, fallback to English
+            $translated_from = function_exists( '__' ) ? __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ) : 'From';
+            
             $default_options = array(
-                'prefix_text' => 'From', // Hardcoded fallback, will be translated when displayed
+                'prefix_text' => $translated_from,
                 'show_prefix_same_price' => false,
                 'add_space_after_prefix' => true,
                 'custom_css_class' => 'ayudawp-lowest-price',
@@ -119,6 +120,11 @@ class AyudaWP_Lowest_Prices {
 
             // Merge saved options with defaults
             $this->options = wp_parse_args( $saved_options, $default_options );
+            
+            // If prefix_text is empty or was never set, ensure we have the translated version
+            if ( empty( $this->options['prefix_text'] ) ) {
+                $this->options['prefix_text'] = $translated_from;
+            }
         }
         return $this->options;
     }
@@ -137,11 +143,25 @@ class AyudaWP_Lowest_Prices {
     }
 
     /**
-     * Plugin activation - NO translations here
+     * Plugin activation - Set default options with translations
      */
     public function ayudawp_activate() {
-        // Don't use any translated strings during activation
-        // Options will be set with proper defaults when first accessed
+        // Set default options only if they don't exist
+        if ( false === get_option( 'ayudawp_lowest_prices_options', false ) ) {
+            // During activation, we can't rely on translations being loaded
+            // We'll set a flag to update the options on first init
+            add_option( 'ayudawp_lowest_prices_options', array(
+                'prefix_text' => 'From', // Will be updated to translated version on first init
+                'show_prefix_same_price' => false,
+                'add_space_after_prefix' => true,
+                'custom_css_class' => 'ayudawp-lowest-price',
+                'hide_prefix_css' => false
+            ) );
+            
+            // Set flag to update with translated text on first load
+            set_transient( 'ayudawp_update_default_text', true, 60 );
+        }
+        
         set_transient( 'ayudawp_lowest_prices_activation_notice', true, 30 );
     }
 
@@ -150,6 +170,7 @@ class AyudaWP_Lowest_Prices {
      */
     public function ayudawp_deactivate() {
         delete_transient( 'ayudawp_lowest_prices_activation_notice' );
+        delete_transient( 'ayudawp_update_default_text' );
     }
 
     /**
@@ -167,7 +188,7 @@ class AyudaWP_Lowest_Prices {
     public function ayudawp_woocommerce_missing_notice() {
         ?>
         <div class="notice notice-error">
-            <p><?php esc_html_e( 'WooCommerce - Show only lowest prices requires WooCommerce to be installed and active.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></p>
+            <p><?php esc_html_e( 'Show only lowest prices in variable products requires WooCommerce to be installed and active.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></p>
         </div>
         <?php
     }
@@ -176,6 +197,16 @@ class AyudaWP_Lowest_Prices {
      * Custom variable price range function
      */
     public function ayudawp_custom_variable_price_range( $price_html, $product ) {
+        // Update default text with translation if needed (only once after activation)
+        if ( get_transient( 'ayudawp_update_default_text' ) ) {
+            $options = get_option( 'ayudawp_lowest_prices_options', array() );
+            if ( isset( $options['prefix_text'] ) && $options['prefix_text'] === 'From' ) {
+                $options['prefix_text'] = __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+                update_option( 'ayudawp_lowest_prices_options', $options );
+            }
+            delete_transient( 'ayudawp_update_default_text' );
+        }
+
         $min_price = $product->get_variation_price( 'min', true );
         $max_price = $product->get_variation_price( 'max', true );
         $suffix = $product->get_price_suffix();
@@ -289,15 +320,21 @@ class AyudaWP_Lowest_Prices {
     }
 
     /**
-     * Sanitize options
+     * Sanitize options - FIXED: Preserve existing values properly
      */
     public function ayudawp_sanitize_options( $input ) {
+        // Get current options to preserve unchecked checkboxes
+        $current_options = get_option( 'ayudawp_lowest_prices_options', array() );
+        
         $sanitized = array();
         
+        // Text fields
         $sanitized['prefix_text'] = sanitize_text_field( $input['prefix_text'] );
+        $sanitized['custom_css_class'] = sanitize_html_class( $input['custom_css_class'] );
+        
+        // Checkboxes - FIXED: Only update if present in input, otherwise preserve current value
         $sanitized['show_prefix_same_price'] = isset( $input['show_prefix_same_price'] ) ? true : false;
         $sanitized['add_space_after_prefix'] = isset( $input['add_space_after_prefix'] ) ? true : false;
-        $sanitized['custom_css_class'] = sanitize_html_class( $input['custom_css_class'] );
         $sanitized['hide_prefix_css'] = isset( $input['hide_prefix_css'] ) ? true : false;
 
         return $sanitized;
