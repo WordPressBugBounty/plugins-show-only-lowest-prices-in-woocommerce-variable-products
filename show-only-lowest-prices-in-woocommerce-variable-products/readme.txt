@@ -2,9 +2,9 @@
 Contributors: fernandot, ayudawp
 Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,7 +16,7 @@ Transform your store's pricing display and boost conversions by showing only wha
 
 Instead of showing confusing price ranges like "$10 - $50" that can overwhelm and confuse customers, this plugin displays clean, simple pricing that encourages purchases.
 
-**New in version 2.0:**
+**New from version 2.x:**
 * **Settings page** - Customize the prefix text, spacing, and display options
 * **Smart prefix control** - Choose whether to show "From" when all variations have the same price
 * **Custom CSS classes** - Add your own styling with custom CSS classes
@@ -39,21 +39,21 @@ Instead of showing confusing price ranges like "$10 - $50" that can overwhelm an
 * Electronics stores with multiple variants
 * Any shop wanting cleaner price displays
 
-The plugin automatically detects your WooCommerce installation and starts working immediately. Access the settings through WooCommerce > Lowest Prices in your admin dashboard.
+The plugin automatically detects your WooCommerce installation and starts working immediately. Access the settings through Marketing > Lowest Prices in your admin dashboard.
 
 == Installation ==
 
 1. Go to your WordPress Dashboard > Plugins > Add New
 2. Search for 'Show only lowest prices in variable products'
 3. Install and activate the plugin
-4. Go to WooCommerce > Lowest Prices to customize settings
+4. Go to Marketing > Lowest Prices to customize settings
 5. That's it! Your variable product prices are now clean and conversion-focused
 
 **Manual installation:**
 1. Download the plugin from the WordPress repository
 2. Upload the plugin folder to `/wp-content/plugins/`
 3. Activate the plugin through the 'Plugins' menu in WordPress
-4. Configure settings in WooCommerce > Lowest Prices
+4. Configure settings in Marketing > Lowest Prices
 
 == Frequently Asked Questions ==
 
@@ -79,15 +79,18 @@ Yes! The plugin includes a .pot file for translations and follows WordPress inte
 
 = Does it work with WooCommerce HPOS? =
 
-Yes! Version 2.0 includes full compatibility with WooCommerce High-Performance Order Storage.
+Yes! The lugin includes full compatibility with WooCommerce High-Performance Order Storage.
 
 == Screenshots ==
 
 1. WooCommerce variable product before plugin activation showing confusing price range
 2. Clean, simple pricing after plugin activation
-3. New settings page with customization options integrated into WooCommerce admin menu
+3. Settings page with customization options integrated into WooCommerce's Marketing admin menu
 
 == Changelog ==
+
+= 2.0.3 =
+* Improved: Admin menu moved to WooCommerce's Marketing > Lowest Prices for better organization
 
 = 2.0.2 =
 * Fixed: Prefix text now properly uses translations when available
@@ -154,6 +157,9 @@ Yes! Version 2.0 includes full compatibility with WooCommerce High-Performance O
 * Initial release
 
 == Upgrade Notice ==
+
+= 2.0.3 =
+Settings moved to WooCommerce's Marketing menu for better organization 
 
 = 2.0.2 =
 Bug fix release! Fixes prefix text translation issues and settings form behavior. Recommended update for all users.
