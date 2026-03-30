@@ -2,9 +2,9 @@
 Contributors: fernandot, ayudawp
 Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.0.3
+Stable tag: 2.1.0
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,11 +63,15 @@ Yes! The plugin uses WooCommerce's standard price hooks, so it works with any pr
 
 = Can I customize the "From" text? =
 
-Absolutely! Go to WooCommerce > Lowest Prices in your admin dashboard to customize the prefix text, spacing, and display options.
+Absolutely! Go to Marketing > Lowest Prices in your admin dashboard to customize the prefix text, spacing, and display options.
 
 = What happens if all variations have the same price? =
 
 By default, the plugin won't show the "From" prefix when all variations have the same price. You can change this behavior in the settings.
+
+= What if I don't want any prefix text? =
+
+Simply clear the prefix text field and save. No prefix will be displayed before the price.
 
 = Does this affect product pages only or shop pages too? =
 
@@ -75,11 +79,11 @@ The plugin works on both shop pages and individual product pages - anywhere WooC
 
 = Is this plugin translation ready? =
 
-Yes! The plugin includes a .pot file for translations and follows WordPress internationalization standards.
+Yes! The plugin follows WordPress internationalization standards and translations are loaded automatically from WordPress.org.
 
 = Does it work with WooCommerce HPOS? =
 
-Yes! The lugin includes full compatibility with WooCommerce High-Performance Order Storage.
+Yes! The plugin includes full compatibility with WooCommerce High-Performance Order Storage.
 
 == Screenshots ==
 
@@ -88,6 +92,18 @@ Yes! The lugin includes full compatibility with WooCommerce High-Performance Ord
 3. Settings page with customization options integrated into WooCommerce's Marketing admin menu
 
 == Changelog ==
+
+= 2.1.0 =
+* Added: Dismissible welcome notice after activation with link to settings
+* Improved: Prefix text now properly displays translations from WordPress.org on first activation
+* Improved: CSS class field now defaults to the plugin class with a clear recommendation to keep it
+* Improved: Admin page now uses standard WordPress styling for better consistency
+* Improved: All admin styles properly enqueued via external CSS file following WordPress coding standards
+* Improved: Admin sidebar now shows dynamic promotional banners with plugin recommendations
+* Removed: "Hide prefix with CSS" setting (redundant - clearing the prefix text achieves the same result)
+* Removed: Unnecessary load_plugin_textdomain() call (handled automatically since WordPress 4.6)
+* Tested up to WooCommerce 10.6.x
+* Tested up to WordPress 7.0
 
 = 2.0.3 =
 * Improved: Admin menu moved to WooCommerce's Marketing > Lowest Prices for better organization
@@ -109,7 +125,6 @@ Yes! The lugin includes full compatibility with WooCommerce High-Performance Ord
 * New: Customizable prefix text
 * New: Option to control prefix display when all prices are the same
 * New: Custom CSS class support for advanced styling
-* New: Option to hide prefix with CSS while maintaining structure
 * Improved: Better code organization following WordPress standards
 * Improved: Enhanced security with proper data sanitization
 * Improved: Better performance and reduced memory usage
@@ -158,11 +173,29 @@ Yes! The lugin includes full compatibility with WooCommerce High-Performance Ord
 
 == Upgrade Notice ==
 
+= 2.1.0 =
+Improved translation support, standard admin styling, activation notice, and cleaner settings. Tested up to WordPress 7.0. The "Hide prefix with CSS" setting has been removed - clear the prefix text field instead.
+
 = 2.0.3 =
-Settings moved to WooCommerce's Marketing menu for better organization 
+Settings moved to WooCommerce's Marketing menu for better organization
 
 = 2.0.2 =
 Bug fix release! Fixes prefix text translation issues and settings form behavior. Recommended update for all users.
 
 = 2.0 =
 Major update! New settings page with customization options, improved performance, and enhanced security. Backup your site before upgrading. Settings will be automatically migrated from the previous version.
+
+== Support ==
+
+Need help or have suggestions?
+
+* [Official website](https://servicios.ayudawp.com)
+* [WordPress support forum](https://wordpress.org/support/plugin/show-only-lowest-prices-in-woocommerce-variable-products/)
+* [YouTube channel](https://www.youtube.com/AyudaWordPressES)
+* [Documentation and tutorials](https://ayudawp.com)
+
+Love the plugin? Please leave us a [5-star review](https://wordpress.org/support/plugin/show-only-lowest-prices-in-woocommerce-variable-products/reviews/#new-post) and help spread the word!
+
+== About AyudaWP.com ==
+
+We are specialists in WordPress security, SEO, and performance optimization plugins. We create tools that solve real problems for WordPress site owners while maintaining the highest coding standards and accessibility requirements.

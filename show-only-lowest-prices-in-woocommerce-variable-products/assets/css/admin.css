@@ -1,0 +1,93 @@
+/**
+ * Admin styles for AyudaWP Lowest Prices plugin
+ *
+ * Uses standard WordPress admin styling. No custom colors or gradients.
+ *
+ * @package AyudaWP_Lowest_Prices
+ */
+
+/* ==========================================================================
+   Page layout (main + sidebar)
+   ========================================================================== */
+
+.ayudawp-content {
+	display: flex;
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.ayudawp-main {
+	flex: 1;
+	min-width: 0;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 0 20px;
+	align-self: flex-start;
+}
+
+.ayudawp-sidebar {
+	width: 280px;
+	flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Promotional widgets — Sidebar layout (vertical)
+   ========================================================================== */
+
+:root {
+	--ayudawp-lp-brand: #0073aa;
+}
+
+.ayudawp-lp-sidebar-widget {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 15px;
+	margin-bottom: 20px;
+}
+
+.ayudawp-lp-sidebar-widget h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.ayudawp-lp-sidebar-widget p {
+	margin: 0 0 15px;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/* Promo widget dashicon */
+.ayudawp-lp-promo-widget > .dashicons {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	color: var(--ayudawp-lp-brand, #0073aa);
+	margin-bottom: 10px;
+}
+
+/* Full-width buttons inside promo widgets */
+.ayudawp-lp-promo-widget .button {
+	display: block;
+	text-align: center;
+	margin-top: 5px;
+	width: 100%;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 960px) {
+	.ayudawp-content {
+		flex-direction: column;
+	}
+
+	.ayudawp-sidebar {
+		width: 100%;
+	}
+}
