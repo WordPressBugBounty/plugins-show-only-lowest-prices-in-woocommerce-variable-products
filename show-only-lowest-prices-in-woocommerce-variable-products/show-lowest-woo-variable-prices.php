@@ -4,7 +4,7 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.1.0
+ * Version: 2.1.1
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
@@ -12,7 +12,7 @@
  * Tested up to: 7.0
  * Requires PHP: 7.4
  * WC requires at least: 4.0
- * WC tested up to: 10.6
+ * WC tested up to: 10.7
  * License: GPLv2+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.1.0' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.1.1' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );

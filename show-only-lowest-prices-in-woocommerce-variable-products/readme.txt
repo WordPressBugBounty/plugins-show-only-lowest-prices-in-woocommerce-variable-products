@@ -4,7 +4,7 @@ Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,9 @@ Yes! The plugin includes full compatibility with WooCommerce High-Performance Or
 3. Settings page with customization options integrated into WooCommerce's Marketing admin menu
 
 == Changelog ==
+
+= 2.1.1 =
+* Tested up to WooCommerce 10.7
 
 = 2.1.0 =
 * Added: Dismissible welcome notice after activation with link to settings
