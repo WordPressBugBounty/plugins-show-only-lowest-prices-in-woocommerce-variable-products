@@ -201,4 +201,4 @@ Love the plugin? Please leave us a [5-star review](https://wordpress.org/support
 
 == About AyudaWP.com ==
 
-We are specialists in WordPress security, SEO, and performance optimization plugins. We create tools that solve real problems for WordPress site owners while maintaining the highest coding standards and accessibility requirements.
+We are specialists in WordPress security, SEO, AI and performance optimization plugins. We create tools that solve real problems for WordPress site owners while maintaining the highest coding standards and accessibility requirements.
