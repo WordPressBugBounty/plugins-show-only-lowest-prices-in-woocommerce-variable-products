@@ -85,6 +85,12 @@ Yes! The plugin follows WordPress internationalization standards and translation
 
 Yes! The plugin includes full compatibility with WooCommerce High-Performance Order Storage.
 
+= Does this plugin implement the EU Omnibus Directive (lowest price in the last 30 days)? =
+
+No. This plugin only changes how variable product prices are displayed, showing the lowest variation price with a "From:" prefix. It is a presentational feature.
+
+It does not track price history and it does not display the prior price (the lowest price applied during the 30 days before a price reduction) required by Directive (EU) 2019/2161, known as the Omnibus Directive. Despite the similar name of some compliance plugins, this plugin serves a different purpose. If your store needs to comply with the Omnibus Directive pricing rules, please use a plugin specifically built for that.
+
 == Screenshots ==
 
 1. WooCommerce variable product before plugin activation showing confusing price range
@@ -189,6 +195,10 @@ Bug fix release! Fixes prefix text translation issues and settings form behavior
 Major update! New settings page with customization options, improved performance, and enhanced security. Backup your site before upgrading. Settings will be automatically migrated from the previous version.
 
 == Support ==
+
+Need private support or custom development?
+
+Do you need one-on-one help, priority troubleshooting, or a custom feature, integration, or tweak built specifically for your site? I offer private support and custom development. Just [contact me](mailto:show-only-lowest-prices-in-woocommerce-variable-products@ayudawp.com) and tell me what you need.
 
 Need help or have suggestions?
 
