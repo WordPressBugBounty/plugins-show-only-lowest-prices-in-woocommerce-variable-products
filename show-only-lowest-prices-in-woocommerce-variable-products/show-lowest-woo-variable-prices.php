@@ -4,7 +4,7 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.1.1
+ * Version: 2.2.0
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
@@ -12,7 +12,7 @@
  * Tested up to: 7.0
  * Requires PHP: 7.4
  * WC requires at least: 4.0
- * WC tested up to: 10.7
+ * WC tested up to: 10.9
  * License: GPLv2+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.1.1' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.2.0' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -93,9 +93,15 @@ class AyudaWP_Lowest_Prices {
 			add_filter( 'plugin_action_links_' . AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME, array( $this, 'ayudawp_plugin_action_links' ) );
 		}
 
-		// WooCommerce price filters.
-		add_filter( 'woocommerce_variable_sale_price_html', array( $this, 'ayudawp_custom_variable_price_range' ), 10, 2 );
+		// WooCommerce price filter.
 		add_filter( 'woocommerce_variable_price_html', array( $this, 'ayudawp_custom_variable_price_range' ), 10, 2 );
+
+		// Leave out-of-stock variations out of the price calculation.
+		$options = $this->ayudawp_get_options();
+		if ( ! empty( $options['exclude_out_of_stock'] ) ) {
+			add_filter( 'woocommerce_variation_prices_price', array( $this, 'ayudawp_skip_out_of_stock_price' ), 10, 2 );
+			add_filter( 'woocommerce_get_variation_prices_hash', array( $this, 'ayudawp_variation_prices_hash' ) );
+		}
 	}
 
 	/**
@@ -112,13 +118,22 @@ class AyudaWP_Lowest_Prices {
 		$options  = get_option( 'ayudawp_lowest_prices_options', array() );
 		$modified = false;
 
-		// Translate the default prefix if it was stored as English 'From'.
+		// Translate the default prefixes if they were stored in English.
 		if ( isset( $options['prefix_text'] ) && 'From' === $options['prefix_text'] ) {
 			$translated = __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
 
 			if ( 'From' !== $translated ) {
 				$options['prefix_text'] = $translated;
 				$modified               = true;
+			}
+		}
+
+		if ( isset( $options['max_prefix_text'] ) && 'Up to' === $options['max_prefix_text'] ) {
+			$translated = __( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+
+			if ( 'Up to' !== $translated ) {
+				$options['max_prefix_text'] = $translated;
+				$modified                   = true;
 			}
 		}
 
@@ -145,16 +160,47 @@ class AyudaWP_Lowest_Prices {
 		if ( null === $this->options ) {
 			$saved_options = get_option( 'ayudawp_lowest_prices_options', array() );
 
-			$default_options = array(
-				'prefix_text'            => __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
-				'show_prefix_same_price' => false,
-				'add_space_after_prefix' => true,
-				'custom_css_class'       => 'ayudawp-lowest-price',
-			);
-
-			$this->options = wp_parse_args( $saved_options, $default_options );
+			$this->options = wp_parse_args( $saved_options, $this->ayudawp_get_default_options() );
 		}
 		return $this->options;
+	}
+
+	/**
+	 * Default options, with the prefixes in the active language.
+	 *
+	 * Note that ayudawp_activate() keeps its own English literals on purpose:
+	 * translations are not loaded yet during activation, and the migration
+	 * routine translates them on the first init.
+	 *
+	 * @return array
+	 */
+	private function ayudawp_get_default_options() {
+		return array(
+			'prefix_text'             => __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'show_prefix_same_price'  => false,
+			'add_space_after_prefix'  => true,
+			'custom_css_class'        => 'ayudawp-lowest-price',
+			'price_mode'              => 'lowest',
+			'max_prefix_text'         => __( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'range_separator'         => '–',
+			'suffix_text'             => '',
+			'show_sale_strikethrough' => true,
+			'show_discount_badge'     => false,
+			'exclude_out_of_stock'    => false,
+			'apply_scope'             => 'everywhere',
+		);
+	}
+
+	/**
+	 * Allowed values for the select settings.
+	 *
+	 * @return array Setting key => list of valid values, first one being the default.
+	 */
+	private function ayudawp_get_allowed_values() {
+		return array(
+			'price_mode'  => array( 'lowest', 'highest', 'range', 'range_short' ),
+			'apply_scope' => array( 'everywhere', 'listings_only', 'single_only' ),
+		);
 	}
 
 	/**
@@ -166,10 +212,18 @@ class AyudaWP_Lowest_Prices {
 			// the English default. The migration routine will update it on
 			// first init if a translation exists for the active locale.
 			add_option( 'ayudawp_lowest_prices_options', array(
-				'prefix_text'            => 'From',
-				'show_prefix_same_price' => false,
-				'add_space_after_prefix' => true,
-				'custom_css_class'       => 'ayudawp-lowest-price',
+				'prefix_text'             => 'From',
+				'show_prefix_same_price'  => false,
+				'add_space_after_prefix'  => true,
+				'custom_css_class'        => 'ayudawp-lowest-price',
+				'price_mode'              => 'lowest',
+				'max_prefix_text'         => 'Up to',
+				'range_separator'         => '–',
+				'suffix_text'             => '',
+				'show_sale_strikethrough' => true,
+				'show_discount_badge'     => false,
+				'exclude_out_of_stock'    => false,
+				'apply_scope'             => 'everywhere',
 			) );
 		}
 
@@ -212,35 +266,216 @@ class AyudaWP_Lowest_Prices {
 	 * @return string Modified price HTML.
 	 */
 	public function ayudawp_custom_variable_price_range( $price_html, $product ) {
-		$min_price = $product->get_variation_price( 'min', true );
-		$max_price = $product->get_variation_price( 'max', true );
-		$suffix    = $product->get_price_suffix();
-
 		$options = $this->ayudawp_get_options();
 
-		// Prefix text: use stored value, empty string means no prefix.
-		$prefix = $options['prefix_text'];
+		if ( ! $this->ayudawp_should_apply( $product, $options ) ) {
+			return $price_html;
+		}
 
-		// Space between prefix and price.
+		$prices = $product->get_variation_prices( true );
+
+		// No priced variations: let WooCommerce handle it.
+		if ( empty( $prices['price'] ) ) {
+			return $price_html;
+		}
+
+		/*
+		 * Each array in $prices is sorted on its own, so the first regular price
+		 * does not necessarily belong to the cheapest variation. Both prices must
+		 * be read through the same variation ID.
+		 */
+		$min_id  = array_key_first( $prices['price'] );
+		$max_id  = array_key_last( $prices['price'] );
+		$min     = $prices['price'][ $min_id ];
+		$max     = $prices['price'][ $max_id ];
+		$min_reg = isset( $prices['regular_price'][ $min_id ] ) ? $prices['regular_price'][ $min_id ] : '';
+		$max_reg = isset( $prices['regular_price'][ $max_id ] ) ? $prices['regular_price'][ $max_id ] : '';
+
+		$same_price = ( $min === $max );
+		$mode       = $options['price_mode'];
+
+		// A range needs two different prices to make sense.
+		if ( $same_price && ( 'range' === $mode || 'range_short' === $mode ) ) {
+			$mode = 'lowest';
+		}
+
 		$space = $options['add_space_after_prefix'] ? ' ' : '';
 
-		// CSS class for the price wrapper.
+		switch ( $mode ) {
+			case 'highest':
+				$body   = $this->ayudawp_format_price( $max, $max_reg, $options );
+				$body  .= $this->ayudawp_discount_badge( $max, $max_reg, $options );
+				$body   = $this->ayudawp_add_prefix( $body, $options['max_prefix_text'], $space, $same_price, $options );
+				$amount = $max;
+				break;
+
+			case 'range':
+				$body = wc_price( $min );
+
+				if ( '' !== $options['max_prefix_text'] ) {
+					$body .= ' <span class="ayudawp-max-prefix">' . esc_html( $options['max_prefix_text'] ) . '</span> ' . wc_price( $max );
+				} else {
+					$body .= ' ' . wc_price( $max );
+				}
+
+				$body   = $this->ayudawp_add_prefix( $body, $options['prefix_text'], $space, false, $options );
+				$amount = $min;
+				break;
+
+			case 'range_short':
+				$separator = '' !== $options['range_separator'] ? $options['range_separator'] : '–';
+				$body      = wc_price( $min ) . ' <span class="ayudawp-range-separator" aria-hidden="true">' . esc_html( $separator ) . '</span> ' . wc_price( $max );
+				$amount    = $min;
+				break;
+
+			case 'lowest':
+			default:
+				$body   = $this->ayudawp_format_price( $min, $min_reg, $options );
+				$body  .= $this->ayudawp_discount_badge( $min, $min_reg, $options );
+				$body   = $this->ayudawp_add_prefix( $body, $options['prefix_text'], $space, $same_price, $options );
+				$amount = $min;
+				break;
+		}
+
+		$body .= $product->get_price_suffix( $amount );
+
+		if ( '' !== $options['suffix_text'] ) {
+			$body .= ' <span class="ayudawp-suffix">' . esc_html( $options['suffix_text'] ) . '</span>';
+		}
+
 		$css_class = ! empty( $options['custom_css_class'] ) ? $options['custom_css_class'] : 'ayudawp-lowest-price';
+		$html      = '<span class="' . esc_attr( $css_class ) . '">' . $body . '</span>';
 
-		// All variations have the same price.
-		if ( $min_price === $max_price ) {
-			if ( $options['show_prefix_same_price'] && '' !== $prefix ) {
-				return '<span class="' . esc_attr( $css_class ) . '"><span class="ayudawp-prefix">' . esc_html( $prefix ) . '</span>' . $space . wc_price( $min_price ) . $suffix . '</span>';
-			}
-			return '<span class="' . esc_attr( $css_class ) . '">' . wc_price( $min_price ) . $suffix . '</span>';
+		/**
+		 * Filters the final price HTML built by this plugin.
+		 *
+		 * Useful to append extra information next to the price, such as the lowest
+		 * price of the last 30 days tracked by a price history plugin.
+		 *
+		 * @since 2.2.0
+		 *
+		 * @param string     $html    The price HTML about to be returned.
+		 * @param WC_Product $product The variable product object.
+		 * @param array      $options The plugin options in use.
+		 */
+		return apply_filters( 'ayudawp_lowest_price_html', $html, $product, $options );
+	}
+
+	/**
+	 * Prepend the prefix text to the price body.
+	 *
+	 * @param string $body       Price HTML.
+	 * @param string $prefix     Prefix text.
+	 * @param string $space      Space between prefix and price.
+	 * @param bool   $same_price Whether every variation shares the same price.
+	 * @param array  $options    Plugin options.
+	 * @return string
+	 */
+	private function ayudawp_add_prefix( $body, $prefix, $space, $same_price, $options ) {
+		if ( '' === $prefix ) {
+			return $body;
 		}
 
-		// Different prices — show prefix if not empty.
-		if ( '' !== $prefix ) {
-			return '<span class="' . esc_attr( $css_class ) . '"><span class="ayudawp-prefix">' . esc_html( $prefix ) . '</span>' . $space . wc_price( $min_price ) . $suffix . '</span>';
+		// With a single price the prefix is only shown when explicitly asked for.
+		if ( $same_price && empty( $options['show_prefix_same_price'] ) ) {
+			return $body;
 		}
 
-		return '<span class="' . esc_attr( $css_class ) . '">' . wc_price( $min_price ) . $suffix . '</span>';
+		return '<span class="ayudawp-prefix">' . esc_html( $prefix ) . '</span>' . $space . $body;
+	}
+
+	/**
+	 * Format a price, keeping the struck through regular price when on sale.
+	 *
+	 * @param string|float $price   Active price.
+	 * @param string|float $regular Regular price of the very same variation.
+	 * @param array        $options Plugin options.
+	 * @return string
+	 */
+	private function ayudawp_format_price( $price, $regular, $options ) {
+		if ( ! empty( $options['show_sale_strikethrough'] ) && '' !== $regular && (float) $regular > (float) $price ) {
+			// WooCommerce builds the accessible <del>/<ins> markup for us.
+			return wc_format_sale_price( $regular, $price );
+		}
+
+		return wc_price( $price );
+	}
+
+	/**
+	 * Build the discount percentage badge.
+	 *
+	 * @param string|float $price   Active price.
+	 * @param string|float $regular Regular price of the very same variation.
+	 * @param array        $options Plugin options.
+	 * @return string Empty string when there is no discount to show.
+	 */
+	private function ayudawp_discount_badge( $price, $regular, $options ) {
+		if ( empty( $options['show_discount_badge'] ) || '' === $regular || (float) $regular <= 0 ) {
+			return '';
+		}
+
+		$percentage = (int) round( ( ( (float) $regular - (float) $price ) / (float) $regular ) * 100 );
+
+		if ( $percentage <= 0 ) {
+			return '';
+		}
+
+		return ' <span class="ayudawp-discount-badge">' . esc_html(
+			sprintf(
+				/* translators: %s: discount percentage, without the percent sign. */
+				__( '-%s%%', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				$percentage
+			)
+		) . '</span>';
+	}
+
+	/**
+	 * Whether the price should be modified in the current context.
+	 *
+	 * Product pages also list products (related, upsells) and blocks can render a
+	 * product collection anywhere, so the check is whether this very product is
+	 * the one being queried, not merely whether we are on a product page.
+	 *
+	 * @param WC_Product $product Product object.
+	 * @param array      $options Plugin options.
+	 * @return bool
+	 */
+	private function ayudawp_should_apply( $product, $options ) {
+		if ( 'everywhere' === $options['apply_scope'] ) {
+			return true;
+		}
+
+		$is_single_product = is_singular( 'product' ) && get_queried_object_id() === $product->get_id();
+
+		return 'single_only' === $options['apply_scope'] ? $is_single_product : ! $is_single_product;
+	}
+
+	/**
+	 * Drop out-of-stock variations from the price calculation.
+	 *
+	 * Returning an empty price makes WooCommerce skip the variation entirely.
+	 *
+	 * @param string|float $price     Variation price.
+	 * @param WC_Product   $variation Variation object.
+	 * @return string|float Empty string for out-of-stock variations.
+	 */
+	public function ayudawp_skip_out_of_stock_price( $price, $variation ) {
+		return $variation->is_in_stock() ? $price : '';
+	}
+
+	/**
+	 * Tell WooCommerce that the filtered prices need their own cache entry.
+	 *
+	 * Without this the cached transient built without the exclusion would be
+	 * served back and the setting would seem to do nothing.
+	 *
+	 * @param array $hash Factors used to build the variation prices cache key.
+	 * @return array
+	 */
+	public function ayudawp_variation_prices_hash( $hash ) {
+		$hash['ayudawp_exclude_out_of_stock'] = true;
+
+		return $hash;
 	}
 
 	/**
@@ -250,6 +485,11 @@ class AyudaWP_Lowest_Prices {
 	 * so it will not appear again on subsequent page loads.
 	 */
 	public function ayudawp_activation_notice() {
+		// Only for users who can actually reach the settings page it links to.
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
 		if ( ! get_transient( 'ayudawp_lowest_prices_activation_notice' ) ) {
 			return;
 		}
@@ -347,6 +587,35 @@ class AyudaWP_Lowest_Prices {
 			'ayudawp_lowest_prices_page',
 			'ayudawp_lowest_prices_section'
 		);
+
+		// Price display section.
+		add_settings_section(
+			'ayudawp_lowest_prices_display_section',
+			__( 'Price Display', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			array( $this, 'ayudawp_display_section_callback' ),
+			'ayudawp_lowest_prices_page'
+		);
+
+		$display_fields = array(
+			'price_mode'              => __( 'What to show', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'max_prefix_text'         => __( 'Highest Price Prefix', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'range_separator'         => __( 'Range separator', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'suffix_text'             => __( 'Price Suffix', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'show_sale_strikethrough' => __( 'Keep the crossed out price on sale', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'show_discount_badge'     => __( 'Show discount percentage', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'exclude_out_of_stock'    => __( 'Ignore out of stock variations', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'apply_scope'             => __( 'Where to apply', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+		);
+
+		foreach ( $display_fields as $field => $label ) {
+			add_settings_field(
+				$field,
+				$label,
+				array( $this, 'ayudawp_' . $field . '_callback' ),
+				'ayudawp_lowest_prices_page',
+				'ayudawp_lowest_prices_display_section'
+			);
+		}
 	}
 
 	/**
@@ -356,6 +625,26 @@ class AyudaWP_Lowest_Prices {
 	 * @return array Sanitized options.
 	 */
 	public function ayudawp_sanitize_options( $input ) {
+		// The "Restore defaults" button travels inside the option array, so it
+		// arrives here already past the nonce and capability checks of options.php.
+		if ( isset( $input['reset_defaults'] ) ) {
+			add_settings_error(
+				'ayudawp_lowest_prices_options',
+				'ayudawp_defaults_restored',
+				__( 'Settings restored to their default values.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'updated'
+			);
+
+			if ( function_exists( 'wc_delete_product_transients' ) ) {
+				wc_delete_product_transients();
+			}
+
+			// Drop the lazy loaded copy so the rest of this request sees the new values.
+			$this->options = null;
+
+			return $this->ayudawp_get_default_options();
+		}
+
 		$sanitized = array();
 
 		// Allow empty prefix (user wants no prefix text).
@@ -363,6 +652,26 @@ class AyudaWP_Lowest_Prices {
 		$sanitized['custom_css_class']       = isset( $input['custom_css_class'] ) ? sanitize_html_class( $input['custom_css_class'] ) : '';
 		$sanitized['show_prefix_same_price'] = isset( $input['show_prefix_same_price'] );
 		$sanitized['add_space_after_prefix'] = isset( $input['add_space_after_prefix'] );
+
+		$sanitized['max_prefix_text'] = isset( $input['max_prefix_text'] ) ? sanitize_text_field( $input['max_prefix_text'] ) : '';
+		$sanitized['range_separator'] = isset( $input['range_separator'] ) ? sanitize_text_field( $input['range_separator'] ) : '';
+		$sanitized['suffix_text']     = isset( $input['suffix_text'] ) ? sanitize_text_field( $input['suffix_text'] ) : '';
+
+		$sanitized['show_sale_strikethrough'] = isset( $input['show_sale_strikethrough'] );
+		$sanitized['show_discount_badge']     = isset( $input['show_discount_badge'] );
+		$sanitized['exclude_out_of_stock']    = isset( $input['exclude_out_of_stock'] );
+
+		// Selects are restricted to their allowed values, falling back to the default.
+		foreach ( $this->ayudawp_get_allowed_values() as $key => $allowed ) {
+			$value            = isset( $input[ $key ] ) ? sanitize_text_field( $input[ $key ] ) : '';
+			$sanitized[ $key ] = in_array( $value, $allowed, true ) ? $value : $allowed[0];
+		}
+
+		// The out-of-stock filters are registered on init, so the cached prices
+		// built under the previous setting have to go.
+		if ( function_exists( 'wc_delete_product_transients' ) ) {
+			wc_delete_product_transients();
+		}
 
 		return $sanitized;
 	}
@@ -372,6 +681,13 @@ class AyudaWP_Lowest_Prices {
 	 */
 	public function ayudawp_section_callback() {
 		echo '<p>' . esc_html__( 'Configure how the lowest prices are displayed in your WooCommerce variable products.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
+	}
+
+	/**
+	 * Price display section description callback.
+	 */
+	public function ayudawp_display_section_callback() {
+		echo '<p>' . esc_html__( 'Choose which price to show, how sales are displayed and where these changes apply.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
 	}
 
 	/**
@@ -404,7 +720,13 @@ class AyudaWP_Lowest_Prices {
 		$checked = ! empty( $options['add_space_after_prefix'] );
 
 		echo '<input type="checkbox" name="ayudawp_lowest_prices_options[add_space_after_prefix]" value="1" ' . checked( 1, $checked, false ) . ' />';
-		echo '<p class="description">' . esc_html__( 'Add a space between the prefix and the price.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
+		echo '<p class="description">';
+		echo esc_html__( 'Add a space between the prefix and the price.', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+		echo ' ';
+		// Second sentence added in 2.2.0. Kept separate so the sentence above
+		// keeps the translations it already has since 2.0.
+		echo esc_html__( 'Turn it off for symbol prefixes like ~ or for languages that do not separate words with spaces. The text field cannot store a trailing space, so this checkbox is the way to control it.', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+		echo '</p>';
 	}
 
 	/**
@@ -416,6 +738,148 @@ class AyudaWP_Lowest_Prices {
 
 		echo '<input type="text" name="ayudawp_lowest_prices_options[custom_css_class]" value="' . esc_attr( $value ) . '" placeholder="ayudawp-lowest-price" class="regular-text" />';
 		echo '<p class="description">' . esc_html__( 'CSS class applied to the price wrapper. We recommend keeping the default class and only changing it if the price text does not display correctly with your theme.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';
+	}
+
+	/**
+	 * Render a text input for one of the plugin options.
+	 *
+	 * @param string $key         Option key.
+	 * @param string $placeholder Placeholder shown when the field is left empty.
+	 * @param string $description Field description.
+	 */
+	private function ayudawp_render_text_field( $key, $placeholder, $description ) {
+		$options = $this->ayudawp_get_options();
+		$value   = isset( $options[ $key ] ) ? $options[ $key ] : '';
+
+		echo '<input type="text" name="ayudawp_lowest_prices_options[' . esc_attr( $key ) . ']" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '" class="regular-text" />';
+		echo '<p class="description">' . esc_html( $description ) . '</p>';
+	}
+
+	/**
+	 * Render a checkbox for one of the plugin options.
+	 *
+	 * @param string $key         Option key.
+	 * @param string $description Field description.
+	 */
+	private function ayudawp_render_checkbox_field( $key, $description ) {
+		$options = $this->ayudawp_get_options();
+		$checked = ! empty( $options[ $key ] );
+
+		echo '<input type="checkbox" name="ayudawp_lowest_prices_options[' . esc_attr( $key ) . ']" value="1" ' . checked( 1, $checked, false ) . ' />';
+		echo '<p class="description">' . esc_html( $description ) . '</p>';
+	}
+
+	/**
+	 * Render a select for one of the plugin options.
+	 *
+	 * @param string $key         Option key.
+	 * @param array  $choices     Value => label pairs.
+	 * @param string $description Field description.
+	 */
+	private function ayudawp_render_select_field( $key, $choices, $description ) {
+		$options = $this->ayudawp_get_options();
+		$value   = isset( $options[ $key ] ) ? $options[ $key ] : '';
+
+		echo '<select name="ayudawp_lowest_prices_options[' . esc_attr( $key ) . ']">';
+		foreach ( $choices as $choice => $label ) {
+			echo '<option value="' . esc_attr( $choice ) . '" ' . selected( $value, $choice, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select>';
+		echo '<p class="description">' . esc_html( $description ) . '</p>';
+	}
+
+	/**
+	 * Price mode field callback.
+	 */
+	public function ayudawp_price_mode_callback() {
+		$this->ayudawp_render_select_field(
+			'price_mode',
+			array(
+				'lowest'      => __( 'Lowest price only — From 40', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'highest'     => __( 'Highest price only — Up to 60', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'range'       => __( 'Both, with text — From 40 up to 60', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'range_short' => __( 'Both, with a separator — 40 – 60', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			),
+			__( 'Which price replaces the default WooCommerce range. Products whose variations all cost the same always show that single price.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Highest price text field callback.
+	 */
+	public function ayudawp_max_prefix_text_callback() {
+		$this->ayudawp_render_text_field(
+			'max_prefix_text',
+			__( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			__( 'Used before the highest price, and between both prices in the "From 40 up to 60" mode. Leave empty to show no text.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Range separator field callback.
+	 */
+	public function ayudawp_range_separator_callback() {
+		$this->ayudawp_render_text_field(
+			'range_separator',
+			'–',
+			__( 'Character shown between both prices in the "40 – 60" mode.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Suffix text field callback.
+	 */
+	public function ayudawp_suffix_text_callback() {
+		$this->ayudawp_render_text_field(
+			'suffix_text',
+			__( '/ month', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			__( 'Text shown after the price, for a unit or a recurrence, such as "/ month", "per person" or "per night". Leave empty to show none. For tax notices like "VAT included" use the WooCommerce price suffix in WooCommerce > Settings > Tax, which already handles them.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Sale strikethrough checkbox callback.
+	 */
+	public function ayudawp_show_sale_strikethrough_callback() {
+		$this->ayudawp_render_checkbox_field(
+			'show_sale_strikethrough',
+			__( 'When the shown variation is on sale, keep its regular price crossed out next to the sale price, the way WooCommerce does.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Discount badge checkbox callback.
+	 */
+	public function ayudawp_show_discount_badge_callback() {
+		$this->ayudawp_render_checkbox_field(
+			'show_discount_badge',
+			__( 'Add the discount percentage after the price. Style it with the .ayudawp-discount-badge CSS class.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Out of stock exclusion checkbox callback.
+	 */
+	public function ayudawp_exclude_out_of_stock_callback() {
+		$this->ayudawp_render_checkbox_field(
+			'exclude_out_of_stock',
+			__( 'Leave out of stock variations out of the calculation, so the shown price is one your customers can actually buy.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
+	}
+
+	/**
+	 * Apply scope field callback.
+	 */
+	public function ayudawp_apply_scope_callback() {
+		$this->ayudawp_render_select_field(
+			'apply_scope',
+			array(
+				'everywhere'    => __( 'Everywhere', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'listings_only' => __( 'Shop and archives only', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'single_only'   => __( 'Product pages only', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			),
+			__( 'Related products, upsells and product blocks count as listings, even inside a product page.', 'show-only-lowest-prices-in-woocommerce-variable-products' )
+		);
 	}
 
 	/**
@@ -435,8 +899,82 @@ class AyudaWP_Lowest_Prices {
 			AYUDAWP_LOWEST_PRICES_VERSION
 		);
 
-		// Thickbox for plugin install modals in promo banner.
-		add_thickbox();
+		wp_enqueue_script(
+			'ayudawp-lowest-prices-admin',
+			AYUDAWP_LOWEST_PRICES_PLUGIN_URL . 'assets/js/admin.js',
+			array(),
+			AYUDAWP_LOWEST_PRICES_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'ayudawp-lowest-prices-admin',
+			'ayudawpLowestPrices',
+			array(
+				'confirmReset' => __( 'This will restore every setting to its default value. Your prefix, suffix, price mode and any other customization will be lost. Do you want to continue?', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			)
+		);
+	}
+
+	/**
+	 * Name of the active price history plugin, if any.
+	 *
+	 * These plugins track the lowest price of the last 30 days required by the EU
+	 * Omnibus Directive, which this plugin does not do. Detection is done against
+	 * the active plugins list to avoid guessing class or constant names.
+	 *
+	 * @return string Plugin name, or an empty string when none is active.
+	 */
+	private function ayudawp_get_price_history_plugin() {
+		$known = array(
+			'omnibus'               => 'Omnibus — show the lowest price',
+			'wc-price-history'      => 'WC Price History',
+			'product-price-history' => 'Product Price History for WooCommerce',
+			'fleekcode-omnibus'     => 'FleekCode – Omnibus Price Tracker',
+		);
+
+		$active = (array) get_option( 'active_plugins', array() );
+
+		if ( is_multisite() ) {
+			$active = array_merge( $active, array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) );
+		}
+
+		foreach ( $active as $plugin_file ) {
+			$folder = dirname( $plugin_file );
+
+			if ( isset( $known[ $folder ] ) ) {
+				return $known[ $folder ];
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Notice explaining how this plugin coexists with a price history plugin.
+	 */
+	private function ayudawp_render_price_history_notice() {
+		$plugin_name = $this->ayudawp_get_price_history_plugin();
+
+		if ( '' === $plugin_name ) {
+			return;
+		}
+		?>
+		<div class="notice notice-info inline ayudawp-lp-notice">
+			<p>
+				<?php
+				printf(
+					/* translators: %s: name of the detected price history plugin. */
+					esc_html__( '%s is active on this site. Both plugins work together: this one decides which price replaces the WooCommerce range, and the other one adds the lowest price of the last 30 days required by the EU Omnibus Directive.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+					esc_html( $plugin_name )
+				);
+				?>
+			</p>
+			<p>
+				<?php esc_html_e( 'If the two messages end up in the wrong order, use the ayudawp_lowest_price_html filter to place them exactly where you want.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
+			</p>
+		</div>
+		<?php
 	}
 
 	/**
@@ -448,14 +986,13 @@ class AyudaWP_Lowest_Prices {
 			require_once AYUDAWP_LOWEST_PRICES_PLUGIN_PATH . 'includes/class-ayudawp-lowest-prices-promo-banner.php';
 		}
 
-		$promo_banner = new AyudaWP_Lowest_Prices_Promo_Banner(
-			'show-only-lowest-prices-in-woocommerce-variable-products',
-			'ayudawp-lp'
-		);
+		$promo_banner = new AyudaWP_Lowest_Prices_Promo_Banner( 'ayudawp-lp' );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Show only lowest prices in variable products', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></h1>
 			<p><?php esc_html_e( 'Clean up your WooCommerce variable product prices and boost your sales.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></p>
+
+			<?php $this->ayudawp_render_price_history_notice(); ?>
 
 			<div class="ayudawp-content">
 				<div class="ayudawp-main">
@@ -463,8 +1000,11 @@ class AyudaWP_Lowest_Prices {
 						<?php
 						settings_fields( 'ayudawp_lowest_prices_group' );
 						do_settings_sections( 'ayudawp_lowest_prices_page' );
-						submit_button( __( 'Save Settings', 'show-only-lowest-prices-in-woocommerce-variable-products' ) );
 						?>
+						<p class="submit">
+							<?php submit_button( __( 'Save Settings', 'show-only-lowest-prices-in-woocommerce-variable-products' ), 'primary', 'submit', false ); ?>
+							<input type="submit" id="ayudawp-lp-reset" name="ayudawp_lowest_prices_options[reset_defaults]" class="button button-secondary" value="<?php esc_attr_e( 'Restore defaults', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>" />
+						</p>
 					</form>
 				</div>
 

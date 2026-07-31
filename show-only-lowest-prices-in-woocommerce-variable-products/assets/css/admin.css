@@ -70,12 +70,27 @@
 	margin-bottom: 10px;
 }
 
-/* Full-width buttons inside promo widgets */
-.ayudawp-lp-promo-widget .button {
+/* Full-width buttons inside promo widgets.
+   WordPress styles .button inside .wp-core-ui with (0,3,0) specificity, so the
+   three own classes are needed to win without touching core classes. */
+.ayudawp-lp-sidebar-widget.ayudawp-lp-promo-widget .button {
 	display: block;
 	text-align: center;
 	margin-top: 5px;
 	width: 100%;
+	white-space: normal;
+	height: auto;
+	min-height: auto;
+	line-height: 1.4;
+	padding: 6px 12px;
+}
+
+/* ==========================================================================
+   Price history plugin notice
+   ========================================================================== */
+
+.ayudawp-lp-notice {
+	margin: 15px 0 0;
 }
 
 /* ==========================================================================

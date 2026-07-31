@@ -1,0 +1,103 @@
+Show only lowest prices in variable products for WooCommerce — Full changelog
+
+For each release, see the entries below. The latest version is always at the top.
+The current release notes also live in readme.txt under "== Changelog ==".
+
+= 2.2.0 =
+* New: Choose what replaces the WooCommerce price range: lowest price, highest price, both with text ("From 40 up to 60") or both with a separator ("40 – 60")
+* New: Customizable price prefix for the highest price, with its own field just like the "From" prefix
+* New: Price suffix after the amount, for units or recurrences like "/ month" or "per person"
+* New: Optional discount percentage badge, styled with the .ayudawp-discount-badge CSS class
+* New: Option to leave out of stock variations out of the price calculation, so the shown price is one customers can actually buy
+* New: Choose where the change applies: everywhere, shop and archives only, or product pages only
+* New: ayudawp_lowest_price_html filter to append extra information to the price, such as the lowest price of the last 30 days tracked by an Omnibus Directive plugin
+* New: Notice in the settings page when a price history plugin is active, explaining how both plugins work together
+* New: Restore defaults button in the settings page, with a confirmation prompt, to put every option back to its recommended value
+* Improved: Settings page split into two sections, General and Price Display
+* Improved: Promotional sidebar now shows AyudaWP services
+* Improved: The "Add space after prefix" setting now explains when you would want it off, and why the space cannot be typed into the prefix field itself
+* Fix: The crossed out regular price is no longer lost on products whose variations are all on sale at the same price. WooCommerce showed it and the plugin was replacing it with the sale price alone
+* Fix: Products on sale now show their regular price crossed out next to the lowest price, so the discount is visible in shop and archive pages too
+* Fix: Removed a filter on woocommerce_variable_sale_price_html, a hook that no longer exists in WooCommerce
+* Tested up to WooCommerce 10.9
+
+= 2.1.1 =
+* Tested up to WooCommerce 10.7
+
+= 2.1.0 =
+* Added: Dismissible welcome notice after activation with link to settings
+* Improved: Prefix text now properly displays translations from WordPress.org on first activation
+* Improved: CSS class field now defaults to the plugin class with a clear recommendation to keep it
+* Improved: Admin page now uses standard WordPress styling for better consistency
+* Improved: All admin styles properly enqueued via external CSS file following WordPress coding standards
+* Improved: Admin sidebar now shows dynamic promotional banners with plugin recommendations
+* Removed: "Hide prefix with CSS" setting (redundant - clearing the prefix text achieves the same result)
+* Removed: Unnecessary load_plugin_textdomain() call (handled automatically since WordPress 4.6)
+* Tested up to WooCommerce 10.6.x
+* Tested up to WordPress 7.0
+
+= 2.0.3 =
+* Improved: Admin menu moved to WooCommerce's Marketing > Lowest Prices for better organization
+
+= 2.0.2 =
+* Fixed: Prefix text now properly uses translations when available
+* Fixed: Settings form no longer auto-activates checkboxes when saving
+* Improved: Better handling of default options on plugin activation
+* Improved: More reliable translation loading process
+* Removed: Deprecated load_plugin_textdomain() function
+* Removed: Domain Path header (no longer needed for WordPress.org plugins)
+
+= 2.0.1 =
+* Solved load translations too early notice
+
+= 2.0 =
+* **Major update with new features and improvements**
+* Added comprehensive settings page with customization options
+* New: Customizable prefix text
+* New: Option to control prefix display when all prices are the same
+* New: Custom CSS class support for advanced styling
+* Improved: Better code organization following WordPress standards
+* Improved: Enhanced security with proper data sanitization
+* Improved: Better performance and reduced memory usage
+* Improved: Updated branding and admin interface
+* Updated: PHP 7.4+ requirement for better security and performance
+* Updated: WordPress 5.0+ requirement
+* Updated: WooCommerce 4.0+ requirement
+* Fixed: Deprecated function warnings in latest PHP versions
+* Tested up to WordPress 6.8
+* Tested up to WooCommerce 10.0.4
+
+= 1.0.7 =
+* Tested up to WordPress 6.7.1
+* Tested up to WooCommerce 9.5.1
+
+= 1.0.6 =
+* Tested up to WordPress 6.6.1
+* Tested up to WooCommerce 9.2.3
+
+= 1.0.5 =
+* Tested up to WordPress 6.4
+
+= 1.0.4 =
+* HPOS compatibility
+
+= 1.0.3 =
+* Prefix "From" not showed if all variations have the same price
+* Tested up to WooCommerce 7.5.1
+* Tested up to WordPress 6.2
+
+= 1.0.2 =
+* Tested up to WooCommerce 7.0.0
+* Tested up to WordPress 6.1
+
+= 1.0.1 =
+* Solved issue with translations
+
+= 1.0 =
+* Code updated to latest WooCommerce functions
+* Added the suffix after the min price if it's enabled as text
+* Tested up to WooCommerce 6.9.1
+* Tested up to WordPress 6.0.2
+
+= 0.9.9 =
+* Initial release
