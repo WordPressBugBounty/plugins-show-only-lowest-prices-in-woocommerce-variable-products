@@ -17,10 +17,11 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  */
 function ayudawp_lowest_prices_uninstall() {
 	delete_option( 'ayudawp_lowest_prices_options' );
+	delete_option( 'ayudawp_lowest_prices_version' );
 	delete_transient( 'ayudawp_lowest_prices_activation_notice' );
-	delete_transient( 'ayudawp_lowest_prices_migrate_prefix' );
 
-	// Legacy transients from previous versions.
+	// Legacy option and transients from previous versions.
+	delete_transient( 'ayudawp_lowest_prices_migrate_prefix' );
 	delete_transient( 'ayudawp_update_default_text' );
 
 	// Multisite cleanup.
@@ -31,6 +32,7 @@ function ayudawp_lowest_prices_uninstall() {
 			switch_to_blog( $site->blog_id );
 
 			delete_option( 'ayudawp_lowest_prices_options' );
+			delete_option( 'ayudawp_lowest_prices_version' );
 			delete_transient( 'ayudawp_lowest_prices_activation_notice' );
 			delete_transient( 'ayudawp_lowest_prices_migrate_prefix' );
 			delete_transient( 'ayudawp_update_default_text' );

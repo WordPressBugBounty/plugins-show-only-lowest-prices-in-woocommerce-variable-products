@@ -4,7 +4,7 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.2.0
+ * Version: 2.2.1
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
@@ -12,7 +12,7 @@
  * Tested up to: 7.0
  * Requires PHP: 7.4
  * WC requires at least: 4.0
- * WC tested up to: 10.9
+ * WC tested up to: 11.0
  * License: GPLv2+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.2.0' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.2.1' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -81,8 +81,8 @@ class AyudaWP_Lowest_Prices {
 			return;
 		}
 
-		// Migrate prefix text for users updating from 2.0.x.
-		$this->ayudawp_maybe_migrate_prefix();
+		// One-time cleanup for users updating from an earlier version.
+		$this->ayudawp_maybe_upgrade();
 
 		// Admin hooks.
 		if ( is_admin() ) {
@@ -105,50 +105,115 @@ class AyudaWP_Lowest_Prices {
 	}
 
 	/**
-	 * Migrate settings from 2.0.x to 2.1.0.
+	 * One-time cleanup, run once after the plugin version changes.
 	 *
-	 * - Translates stored 'From' prefix if a translation exists.
-	 * - Removes the deprecated 'hide_prefix_css' option.
+	 * - Drops the prefixes that only hold a copy of a bundled default (2.2.1).
+	 * - Removes the deprecated 'hide_prefix_css' option (2.1.0).
+	 *
+	 * Gated on a stored version instead of a transient, so it runs once per
+	 * update rather than once a day, and a prefix the shop actually typed is
+	 * never looked at again after the update that cleaned up.
 	 */
-	private function ayudawp_maybe_migrate_prefix() {
-		if ( get_transient( 'ayudawp_lowest_prices_migrate_prefix' ) ) {
-			return; // Already migrated.
+	private function ayudawp_maybe_upgrade() {
+		if ( get_option( 'ayudawp_lowest_prices_version' ) === AYUDAWP_LOWEST_PRICES_VERSION ) {
+			return;
 		}
 
 		$options  = get_option( 'ayudawp_lowest_prices_options', array() );
 		$modified = false;
 
-		// Translate the default prefixes if they were stored in English.
-		if ( isset( $options['prefix_text'] ) && 'From' === $options['prefix_text'] ) {
-			$translated = __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+		if ( is_array( $options ) ) {
 
-			if ( 'From' !== $translated ) {
-				$options['prefix_text'] = $translated;
-				$modified               = true;
+			foreach ( $this->ayudawp_find_stored_defaults( $options ) as $key ) {
+				unset( $options[ $key ] );
+				$modified = true;
 			}
-		}
 
-		if ( isset( $options['max_prefix_text'] ) && 'Up to' === $options['max_prefix_text'] ) {
-			$translated = __( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' );
-
-			if ( 'Up to' !== $translated ) {
-				$options['max_prefix_text'] = $translated;
-				$modified                   = true;
+			// Legacy setting no longer used since 2.1.0.
+			if ( isset( $options['hide_prefix_css'] ) ) {
+				unset( $options['hide_prefix_css'] );
+				$modified = true;
 			}
-		}
-
-		// Remove legacy setting no longer used in 2.1.0.
-		if ( isset( $options['hide_prefix_css'] ) ) {
-			unset( $options['hide_prefix_css'] );
-			$modified = true;
 		}
 
 		if ( $modified ) {
 			update_option( 'ayudawp_lowest_prices_options', $options );
+
+			// Drop the lazy loaded copy so the rest of this request sees the change.
+			$this->options = null;
+
+			if ( function_exists( 'wc_delete_product_transients' ) ) {
+				wc_delete_product_transients();
+			}
 		}
 
-		// Prevent running on every page load.
-		set_transient( 'ayudawp_lowest_prices_migrate_prefix', true, DAY_IN_SECONDS );
+		// Gate of the old migration routine, replaced by the version option.
+		delete_transient( 'ayudawp_lowest_prices_migrate_prefix' );
+
+		update_option( 'ayudawp_lowest_prices_version', AYUDAWP_LOWEST_PRICES_VERSION );
+	}
+
+	/**
+	 * Find stored prefixes that are just a copy of a bundled default.
+	 *
+	 * Until 2.2.1 the prefixes were stored verbatim in three different ways:
+	 * activation wrote the English literals, a migration routine replaced them
+	 * with the translation of the active locale, and the settings fields came
+	 * pre-filled so the first "Save changes" stored whatever the admin was
+	 * seeing. From then on the shop printed the stored value as is, so the
+	 * prefix stopped going through translation and stayed in that one language
+	 * for every visitor, which on a multilingual shop is plainly wrong.
+	 *
+	 * Removing the key restores the fallback: the option merge puts the bundled
+	 * string back at read time, and it is resolved in the language of each
+	 * visitor. A prefix the shop actually typed never matches any of the
+	 * defaults and is left untouched, and so is an empty one, which is the way
+	 * to ask for no prefix at all.
+	 *
+	 * Every locale installed on the site is checked, plus the original English,
+	 * which covers the language the admin could have been using when saving.
+	 *
+	 * @param array $options Stored options.
+	 * @return array List of option keys that only hold a bundled default.
+	 */
+	private function ayudawp_find_stored_defaults( $options ) {
+		$found   = array();
+		$locales = array_unique( array_merge( array( 'en_US', get_locale() ), get_available_languages() ) );
+
+		foreach ( $locales as $locale ) {
+
+			$switched = switch_to_locale( $locale );
+			$defaults = $this->ayudawp_translatable_defaults();
+
+			if ( $switched ) {
+				restore_previous_locale();
+			}
+
+			foreach ( $defaults as $key => $default ) {
+				if ( isset( $options[ $key ] ) && $options[ $key ] === $default ) {
+					$found[ $key ] = $key;
+				}
+			}
+		}
+
+		return $found;
+	}
+
+	/**
+	 * The settings whose default is a translatable string.
+	 *
+	 * These are printed to the customer, so their default has to stay a regular
+	 * translatable string and follow the language of each visitor. They are only
+	 * stored as an option when the shop writes its own wording, which is what
+	 * ayudawp_sanitize_options() and ayudawp_maybe_upgrade() take care of.
+	 *
+	 * @return array Option key => bundled default text.
+	 */
+	private function ayudawp_translatable_defaults() {
+		return array(
+			'prefix_text'     => __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'max_prefix_text' => __( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+		);
 	}
 
 	/**
@@ -166,28 +231,30 @@ class AyudaWP_Lowest_Prices {
 	}
 
 	/**
-	 * Default options, with the prefixes in the active language.
+	 * Default options, with the prefixes in the language of the current request.
 	 *
-	 * Note that ayudawp_activate() keeps its own English literals on purpose:
-	 * translations are not loaded yet during activation, and the migration
-	 * routine translates them on the first init.
+	 * The two prefixes are resolved here, at read time, and are never stored:
+	 * that is what keeps them following the language of each visitor instead of
+	 * freezing in the one the admin happened to be using. See
+	 * ayudawp_translatable_defaults().
 	 *
 	 * @return array
 	 */
 	private function ayudawp_get_default_options() {
-		return array(
-			'prefix_text'             => __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
-			'show_prefix_same_price'  => false,
-			'add_space_after_prefix'  => true,
-			'custom_css_class'        => 'ayudawp-lowest-price',
-			'price_mode'              => 'lowest',
-			'max_prefix_text'         => __( 'Up to', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
-			'range_separator'         => '–',
-			'suffix_text'             => '',
-			'show_sale_strikethrough' => true,
-			'show_discount_badge'     => false,
-			'exclude_out_of_stock'    => false,
-			'apply_scope'             => 'everywhere',
+		return array_merge(
+			array(
+				'show_prefix_same_price'  => false,
+				'add_space_after_prefix'  => true,
+				'custom_css_class'        => 'ayudawp-lowest-price',
+				'price_mode'              => 'lowest',
+				'range_separator'         => '–',
+				'suffix_text'             => '',
+				'show_sale_strikethrough' => true,
+				'show_discount_badge'     => false,
+				'exclude_out_of_stock'    => false,
+				'apply_scope'             => 'everywhere',
+			),
+			$this->ayudawp_translatable_defaults()
 		);
 	}
 
@@ -208,16 +275,15 @@ class AyudaWP_Lowest_Prices {
 	 */
 	public function ayudawp_activate() {
 		if ( false === get_option( 'ayudawp_lowest_prices_options', false ) ) {
-			// Translations may not be loaded during activation, so we store
-			// the English default. The migration routine will update it on
-			// first init if a translation exists for the active locale.
+			// Both prefixes are left out on purpose: they are resolved at read
+			// time from the language pack, so storing them here would freeze
+			// them in one language. Translations are not even loaded during
+			// activation, which is what made the old code store English.
 			add_option( 'ayudawp_lowest_prices_options', array(
-				'prefix_text'             => 'From',
 				'show_prefix_same_price'  => false,
 				'add_space_after_prefix'  => true,
 				'custom_css_class'        => 'ayudawp-lowest-price',
 				'price_mode'              => 'lowest',
-				'max_prefix_text'         => 'Up to',
 				'range_separator'         => '–',
 				'suffix_text'             => '',
 				'show_sale_strikethrough' => true,
@@ -642,7 +708,15 @@ class AyudaWP_Lowest_Prices {
 			// Drop the lazy loaded copy so the rest of this request sees the new values.
 			$this->options = null;
 
-			return $this->ayudawp_get_default_options();
+			$defaults = $this->ayudawp_get_default_options();
+
+			// The prefixes go back to being resolved at read time, so they are
+			// not written to the database along with the rest.
+			foreach ( array_keys( $this->ayudawp_translatable_defaults() ) as $key ) {
+				unset( $defaults[ $key ] );
+			}
+
+			return $defaults;
 		}
 
 		$sanitized = array();
@@ -665,6 +739,16 @@ class AyudaWP_Lowest_Prices {
 		foreach ( $this->ayudawp_get_allowed_values() as $key => $allowed ) {
 			$value            = isset( $input[ $key ] ) ? sanitize_text_field( $input[ $key ] ) : '';
 			$sanitized[ $key ] = in_array( $value, $allowed, true ) ? $value : $allowed[0];
+		}
+
+		/*
+		 * A prefix identical to the bundled default is not stored at all, so it
+		 * keeps being resolved from the language pack on every request and each
+		 * visitor of a multilingual shop reads it in their own language. An
+		 * empty prefix is a different thing and is stored: it means no prefix.
+		 */
+		foreach ( $this->ayudawp_find_stored_defaults( $sanitized ) as $key ) {
+			unset( $sanitized[ $key ] );
 		}
 
 		// The out-of-stock filters are registered on init, so the cached prices
@@ -695,7 +779,10 @@ class AyudaWP_Lowest_Prices {
 	 */
 	public function ayudawp_prefix_text_callback() {
 		$options = $this->ayudawp_get_options();
-		$value   = isset( $options['prefix_text'] ) ? $options['prefix_text'] : __( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+
+		// Always set: an unsaved prefix comes from the defaults, already in the
+		// language of this request. Saving it back unchanged stores nothing.
+		$value = $options['prefix_text'];
 
 		echo '<input type="text" name="ayudawp_lowest_prices_options[prefix_text]" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr__( 'From', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '" class="regular-text" />';
 		echo '<p class="description">' . esc_html__( 'Text to show before the lowest price. Leave empty to show no prefix.', 'show-only-lowest-prices-in-woocommerce-variable-products' ) . '</p>';

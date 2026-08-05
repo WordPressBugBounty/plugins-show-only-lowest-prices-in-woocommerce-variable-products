@@ -4,7 +4,7 @@ Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -121,6 +121,11 @@ Yes, with the `ayudawp_lowest_price_html` filter. It receives the final price HT
 
 == Changelog ==
 
+= 2.2.1 =
+* Improved: Tested up to WooCommerce 11.0
+* Improved: A prefix you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
+* Fix: The "From" and "Up to" prefixes no longer get stuck in the language of whoever saved the settings. They were written to the database, so a multilingual shop printed them in that one language to every visitor. They are resolved per visitor again, and a stored copy of the bundled text is cleaned up on update. A prefix you typed yourself is kept untouched
+
 = 2.2.0 =
 * New: Choose what replaces the WooCommerce price range: lowest price, highest price, both with text ("From 40 up to 60") or both with a separator ("40 – 60")
 * New: Customizable price prefix for the highest price, with its own field just like the "From" prefix
@@ -132,7 +137,6 @@ Yes, with the `ayudawp_lowest_price_html` filter. It receives the final price HT
 * New: Notice in the settings page when a price history plugin is active, explaining how both plugins work together
 * New: Restore defaults button in the settings page, with a confirmation prompt, to put every option back to its recommended value
 * Improved: Settings page split into two sections, General and Price Display
-* Improved: Promotional sidebar now shows AyudaWP services
 * Improved: The "Add space after prefix" setting now explains when you would want it off, and why the space cannot be typed into the prefix field itself
 * Fix: The crossed out regular price is no longer lost on products whose variations are all on sale at the same price. WooCommerce showed it and the plugin was replacing it with the sale price alone
 * Fix: Products on sale now show their regular price crossed out next to the lowest price, so the discount is visible in shop and archive pages too
@@ -143,8 +147,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.2.0 =
-Sale prices now keep their crossed out regular price, which previous versions dropped. New options: show the highest price or both, discount badge, suffix text, ignore out of stock variations and choose where it applies.
+= 2.2.1 =
+Fixes the price prefixes getting stuck in one language on multilingual shops. Any stored copy of the bundled text is cleaned up on update, and a prefix you typed yourself is kept untouched. Also tested up to WooCommerce 11.0.
 
 == Support ==
 

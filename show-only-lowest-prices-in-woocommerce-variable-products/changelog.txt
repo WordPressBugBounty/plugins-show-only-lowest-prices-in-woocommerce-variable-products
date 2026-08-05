@@ -3,6 +3,11 @@ Show only lowest prices in variable products for WooCommerce — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.2.1 =
+* Improved: Tested up to WooCommerce 11.0
+* Improved: A prefix you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
+* Fix: The "From" and "Up to" prefixes no longer get stuck in the language of whoever saved the settings. They were written to the database, so a multilingual shop printed them in that one language to every visitor. They are resolved per visitor again, and a stored copy of the bundled text is cleaned up on update. A prefix you typed yourself is kept untouched
+
 = 2.2.0 =
 * New: Choose what replaces the WooCommerce price range: lowest price, highest price, both with text ("From 40 up to 60") or both with a separator ("40 – 60")
 * New: Customizable price prefix for the highest price, with its own field just like the "From" prefix

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Multilingual configuration for Show only lowest prices in variable products
+	for WooCommerce.
+
+	Read automatically by WPML (and by Polylang, which supports the same file),
+	so nothing has to be configured by hand on a multilingual shop.
+
+	Only the settings that print text to the customer are listed, and only the
+	ones the shop can edit. The prefixes shipped by the plugin are regular
+	translatable strings resolved on every request, so they already follow the
+	language of each visitor and come from the language pack instead. These
+	entries are what makes a prefix the shop typed itself translatable too.
+
+	The keys are nested because every setting lives inside the serialized
+	ayudawp_lowest_prices_options array.
+-->
+<wpml-config>
+
+	<admin-texts>
+		<key name="ayudawp_lowest_prices_options">
+			<key name="prefix_text" />
+			<key name="max_prefix_text" />
+			<key name="suffix_text" />
+		</key>
+	</admin-texts>
+
+</wpml-config>
