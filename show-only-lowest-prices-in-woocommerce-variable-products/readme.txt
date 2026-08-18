@@ -2,9 +2,9 @@
 Contributors: fernandot, ayudawp
 Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.2.1
+Stable tag: 2.3.0
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,6 +25,7 @@ Instead of showing confusing price ranges like "$10 - $50" that can overwhelm an
 * **Out of stock aware** - Leave sold out variations out of the calculation, so the price you advertise is one your customers can actually buy
 * **Where it applies** - Everywhere, shop and archives only, or product pages only
 * **Smart prefix** - Hide it automatically when every variation costs the same
+* **Live preview** - See exactly how your price will read while you set it up, without saving or leaving the settings page
 * **Yours to style and extend** - Custom CSS class for the price, plus a filter to add your own information next to it
 * **No performance impact** - Lightweight and efficient, reusing the price data WooCommerce already caches
 * **Translation ready** and fully compatible with WooCommerce and WordPress, HPOS included
@@ -121,34 +122,16 @@ Yes, with the `ayudawp_lowest_price_html` filter. It receives the final price HT
 
 == Changelog ==
 
-= 2.2.1 =
-* Improved: Tested up to WooCommerce 11.0
-* Improved: A prefix you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
-* Fix: The "From" and "Up to" prefixes no longer get stuck in the language of whoever saved the settings. They were written to the database, so a multilingual shop printed them in that one language to every visitor. They are resolved per visitor again, and a stored copy of the bundled text is cleaned up on update. A prefix you typed yourself is kept untouched
-
-= 2.2.0 =
-* New: Choose what replaces the WooCommerce price range: lowest price, highest price, both with text ("From 40 up to 60") or both with a separator ("40 – 60")
-* New: Customizable price prefix for the highest price, with its own field just like the "From" prefix
-* New: Price suffix after the amount, for units or recurrences like "/ month" or "per person"
-* New: Optional discount percentage badge, styled with the .ayudawp-discount-badge CSS class
-* New: Option to leave out of stock variations out of the price calculation, so the shown price is one customers can actually buy
-* New: Choose where the change applies: everywhere, shop and archives only, or product pages only
-* New: ayudawp_lowest_price_html filter to append extra information to the price, such as the lowest price of the last 30 days tracked by an Omnibus Directive plugin
-* New: Notice in the settings page when a price history plugin is active, explaining how both plugins work together
-* New: Restore defaults button in the settings page, with a confirmation prompt, to put every option back to its recommended value
-* Improved: Settings page split into two sections, General and Price Display
-* Improved: The "Add space after prefix" setting now explains when you would want it off, and why the space cannot be typed into the prefix field itself
-* Fix: The crossed out regular price is no longer lost on products whose variations are all on sale at the same price. WooCommerce showed it and the plugin was replacing it with the sale price alone
-* Fix: Products on sale now show their regular price crossed out next to the lowest price, so the discount is visible in shop and archive pages too
-* Fix: Removed a filter on woocommerce_variable_sale_price_html, a hook that no longer exists in WooCommerce
-* Tested up to WooCommerce 10.9
+= 2.3.0 =
+* New: Live preview in the settings page, showing how your price will read for three situations at once: variations at different prices, the variation shown on sale, and every variation at the same price. It updates as you change the options and follows the page while you scroll
+* Improved: Compatible with WordPress 7.1
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/show-only-lowest-prices-in-woocommerce-variable-products/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.2.1 =
-Fixes the price prefixes getting stuck in one language on multilingual shops. Any stored copy of the bundled text is cleaned up on update, and a prefix you typed yourself is kept untouched. Also tested up to WooCommerce 11.0.
+= 2.3.0 =
+Compatibility release for WordPress 7.1. The settings page now shows a live preview of the price, so you can see how it will read before saving anything.
 
 == Support ==
 

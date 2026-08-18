@@ -94,6 +94,82 @@
 }
 
 /* ==========================================================================
+   Live preview of the price format
+   ========================================================================== */
+
+.ayudawp-lp-preview {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	padding: 12px 15px;
+	margin: 20px 0;
+	max-width: 40em;
+}
+
+/* Follows the scroll so the options further down can be judged against it.
+   Only above the breakpoint where WordPress unpins the admin bar, since below
+   it the box would cover the field being edited. */
+@media screen and (min-width: 783px) {
+	.ayudawp-lp-preview {
+		position: sticky;
+		top: 42px;
+		z-index: 1;
+	}
+}
+
+.ayudawp-lp-preview-title {
+	margin: 0 0 8px;
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: 11px;
+	letter-spacing: 0.05em;
+	color: #50575e;
+}
+
+.ayudawp-lp-preview-list {
+	margin: 0;
+	list-style: none;
+}
+
+.ayudawp-lp-preview-list li {
+	margin: 0 0 6px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 10px;
+	align-items: baseline;
+}
+
+.ayudawp-lp-preview-case {
+	color: #50575e;
+	font-size: 12px;
+	min-width: 15em;
+}
+
+.ayudawp-lp-preview-price {
+	font-size: 15px;
+}
+
+/* The badge ships without front end styles on purpose, so the preview gives it
+   the minimum needed to read as a badge here. */
+.ayudawp-lp-preview-price .ayudawp-discount-badge {
+	background: #d63638;
+	color: #fff;
+	border-radius: 2px;
+	padding: 1px 6px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.ayudawp-lp-preview .description {
+	margin: 8px 0 0;
+}
+
+@media (max-width: 782px) {
+	.ayudawp-lp-preview-case {
+		min-width: 100%;
+	}
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 

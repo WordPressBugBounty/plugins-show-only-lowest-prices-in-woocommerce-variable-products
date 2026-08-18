@@ -4,12 +4,12 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.2.1
+ * Version: 2.3.0
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
  * Requires at least: 5.0
- * Tested up to: 7.0
+ * Tested up to: 7.1
  * Requires PHP: 7.4
  * WC requires at least: 4.0
  * WC tested up to: 11.0
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.2.1' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.3.0' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -999,8 +999,72 @@ class AyudaWP_Lowest_Prices {
 			'ayudawpLowestPrices',
 			array(
 				'confirmReset' => __( 'This will restore every setting to its default value. Your prefix, suffix, price mode and any other customization will be lost. Do you want to continue?', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				'preview'      => $this->ayudawp_get_preview_samples(),
 			)
 		);
+	}
+
+	/**
+	 * Sample prices for the live preview, formatted with the store currency.
+	 *
+	 * The preview is assembled in JavaScript, so only the price amounts are built
+	 * here: WooCommerce is the one that knows the currency, the decimal separator
+	 * and the accessible markup of a sale price.
+	 *
+	 * @return array Price HTML snippets keyed by role, plus the discount badge text.
+	 */
+	private function ayudawp_get_preview_samples() {
+		if ( ! function_exists( 'wc_price' ) ) {
+			return array();
+		}
+
+		return array(
+			'min'     => wc_price( 40 ),
+			'max'     => wc_price( 60 ),
+			'minSale' => wc_format_sale_price( 50, 40 ),
+			'maxSale' => wc_format_sale_price( 75, 60 ),
+			'badge'   => sprintf(
+				/* translators: %s: discount percentage, without the percent sign. */
+				__( '-%s%%', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+				20
+			),
+		);
+	}
+
+	/**
+	 * Live preview of the price format, filled in by the admin script.
+	 *
+	 * Hidden until JavaScript takes over, so nobody is left looking at an empty
+	 * box, and never saved: it only shows what the current options would print.
+	 * It sits at the top of the form, and sticks there on wide screens, so it is
+	 * still visible while the options further down the page are being changed.
+	 */
+	private function ayudawp_render_preview() {
+		if ( ! function_exists( 'wc_price' ) ) {
+			return;
+		}
+
+		$cases = array(
+			'varied' => __( 'Variations at different prices', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'sale'   => __( 'The variation shown is on sale', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+			'same'   => __( 'All variations at the same price', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+		);
+		?>
+		<div class="ayudawp-lp-preview" id="ayudawp-lp-preview" hidden>
+			<p class="ayudawp-lp-preview-title"><?php esc_html_e( 'Live preview', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></p>
+			<ul class="ayudawp-lp-preview-list">
+				<?php foreach ( $cases as $case => $label ) : ?>
+					<li>
+						<span class="ayudawp-lp-preview-case"><?php echo esc_html( $label ); ?></span>
+						<span class="ayudawp-lp-preview-price" data-case="<?php echo esc_attr( $case ); ?>"></span>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+			<p class="description">
+				<?php esc_html_e( 'Sample amounts in your store currency, updated as you change the options on this page. Nothing is saved until you press Save Settings, and taxes are left out because WooCommerce adds those on its own.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
+			</p>
+		</div>
+		<?php
 	}
 
 	/**
@@ -1086,6 +1150,7 @@ class AyudaWP_Lowest_Prices {
 					<form method="post" action="options.php">
 						<?php
 						settings_fields( 'ayudawp_lowest_prices_group' );
+						$this->ayudawp_render_preview();
 						do_settings_sections( 'ayudawp_lowest_prices_page' );
 						?>
 						<p class="submit">
