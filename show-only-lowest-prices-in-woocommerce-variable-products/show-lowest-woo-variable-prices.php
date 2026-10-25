@@ -4,7 +4,7 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.3.0
+ * Version: 2.4.0
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
@@ -12,7 +12,7 @@
  * Tested up to: 7.1
  * Requires PHP: 7.4
  * WC requires at least: 4.0
- * WC tested up to: 11.0
+ * WC tested up to: 11.2
  * License: GPLv2+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.3.0' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.4.0' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -366,13 +366,16 @@ class AyudaWP_Lowest_Prices {
 		}
 
 		$space = $options['add_space_after_prefix'] ? ' ' : '';
+		$note  = '';
 
 		switch ( $mode ) {
 			case 'highest':
-				$body   = $this->ayudawp_format_price( $max, $max_reg, $options );
-				$body  .= $this->ayudawp_discount_badge( $max, $max_reg, $options );
-				$body   = $this->ayudawp_add_prefix( $body, $options['max_prefix_text'], $space, $same_price, $options );
-				$amount = $max;
+				$reference = $this->ayudawp_sale_reference( $max_id, $max, $max_reg );
+				$body      = $this->ayudawp_format_price( $max, $reference['strike'], $options );
+				$body     .= $this->ayudawp_discount_badge( $max, $reference['badge'], $options );
+				$body      = $this->ayudawp_add_prefix( $body, $options['max_prefix_text'], $space, $same_price, $options );
+				$amount    = $max;
+				$note      = $this->ayudawp_msps_note( $max_id, $max, $max_reg, $product );
 				break;
 
 			case 'range':
@@ -396,10 +399,12 @@ class AyudaWP_Lowest_Prices {
 
 			case 'lowest':
 			default:
-				$body   = $this->ayudawp_format_price( $min, $min_reg, $options );
-				$body  .= $this->ayudawp_discount_badge( $min, $min_reg, $options );
-				$body   = $this->ayudawp_add_prefix( $body, $options['prefix_text'], $space, $same_price, $options );
-				$amount = $min;
+				$reference = $this->ayudawp_sale_reference( $min_id, $min, $min_reg );
+				$body      = $this->ayudawp_format_price( $min, $reference['strike'], $options );
+				$body     .= $this->ayudawp_discount_badge( $min, $reference['badge'], $options );
+				$body      = $this->ayudawp_add_prefix( $body, $options['prefix_text'], $space, $same_price, $options );
+				$amount    = $min;
+				$note      = $this->ayudawp_msps_note( $min_id, $min, $min_reg, $product );
 				break;
 		}
 
@@ -410,13 +415,15 @@ class AyudaWP_Lowest_Prices {
 		}
 
 		$css_class = ! empty( $options['custom_css_class'] ) ? $options['custom_css_class'] : 'ayudawp-lowest-price';
-		$html      = '<span class="' . esc_attr( $css_class ) . '">' . $body . '</span>';
+		$html      = '<span class="' . esc_attr( $css_class ) . '">' . $body . '</span>' . $note;
 
 		/**
 		 * Filters the final price HTML built by this plugin.
 		 *
 		 * Useful to append extra information next to the price, such as the lowest
-		 * price of the last 30 days tracked by a price history plugin.
+		 * price of the last 30 days tracked by a price history plugin. The prior
+		 * price note of Scheduled Sales, Discounts and Omnibus Price History for WooCommerce, when there
+		 * is one, is already in it, right after the price.
 		 *
 		 * @since 2.2.0
 		 *
@@ -454,7 +461,10 @@ class AyudaWP_Lowest_Prices {
 	 * Format a price, keeping the struck through regular price when on sale.
 	 *
 	 * @param string|float $price   Active price.
-	 * @param string|float $regular Regular price of the very same variation.
+	 * @param string|float $regular Price to cross out: the regular price of the very
+	 *                              same variation, or its prior price (see
+	 *                              ayudawp_sale_reference()). Nothing is crossed out
+	 *                              unless it is higher than $price.
 	 * @param array        $options Plugin options.
 	 * @return string
 	 */
@@ -471,7 +481,9 @@ class AyudaWP_Lowest_Prices {
 	 * Build the discount percentage badge.
 	 *
 	 * @param string|float $price   Active price.
-	 * @param string|float $regular Regular price of the very same variation.
+	 * @param string|float $regular Price the discount is measured against: the regular
+	 *                              price of the very same variation, or its prior
+	 *                              price (see ayudawp_sale_reference()).
 	 * @param array        $options Plugin options.
 	 * @return string Empty string when there is no discount to show.
 	 */
@@ -493,6 +505,104 @@ class AyudaWP_Lowest_Prices {
 				$percentage
 			)
 		) . '</span>';
+	}
+
+	/**
+	 * Prices a sale of the shown variation is measured against.
+	 *
+	 * Without a price history the regular price is both the one crossed out and
+	 * the one the badge is calculated on. With Scheduled Sales, Discounts and Omnibus Price History for
+	 * WooCommerce active, a prior price lower than the regular one takes over
+	 * the badge: the EU Court of Justice ruled that a reduction announced as a
+	 * percentage is calculated on the prior price (C-330/23, September 2024).
+	 * It is also the price crossed out when that plugin is set to cross out the
+	 * prior price; otherwise the regular price stays crossed out and the prior
+	 * price is left to its note (ayudawp_msps_note()).
+	 *
+	 * @param int          $variation_id Shown variation.
+	 * @param string|float $price        Its active price, for display.
+	 * @param string|float $regular      Its regular price, for display.
+	 * @return array {
+	 *     @type string|float $strike Price to cross out.
+	 *     @type string|float $badge  Price the discount badge is calculated on.
+	 * }
+	 */
+	private function ayudawp_sale_reference( $variation_id, $price, $regular ) {
+		$reference = array(
+			'strike' => $regular,
+			'badge'  => $regular,
+		);
+
+		// Not on sale: there is no reduction to measure.
+		if ( '' === $regular || (float) $regular <= (float) $price ) {
+			return $reference;
+		}
+
+		$prior = $this->ayudawp_get_msps_prior_price( $variation_id );
+
+		if ( null === $prior || $prior >= (float) $regular ) {
+			return $reference;
+		}
+
+		$reference['badge'] = $prior;
+
+		if ( function_exists( 'ayudawp_msps_strikes_prior_price' ) && ayudawp_msps_strikes_prior_price() ) {
+			$reference['strike'] = $prior;
+		}
+
+		return $reference;
+	}
+
+	/**
+	 * Prior price of a variation from Scheduled Sales, Discounts and Omnibus Price History for WooCommerce.
+	 *
+	 * That plugin records every price a product had and works out the lowest one
+	 * applied in the days before the current price started, which is the prior
+	 * price of the EU Omnibus Directive. It is asked for the price as the shop
+	 * displays it, with or without tax, because that is how the prices compared
+	 * here come out of get_variation_prices( true ).
+	 *
+	 * Only its public API is used, stable since its version 1.6.0. Earlier
+	 * versions do not have it, and their prior price did not yet count the price
+	 * in effect when the window opened, so nothing changes with them.
+	 *
+	 * @param int $variation_id Variation ID.
+	 * @return float|null Prior price for display, or null when the plugin is not
+	 *                    active or there is no earlier price to compare.
+	 */
+	private function ayudawp_get_msps_prior_price( $variation_id ) {
+		if ( ! function_exists( 'ayudawp_msps_get_prior_price' ) ) {
+			return null;
+		}
+
+		$prior = ayudawp_msps_get_prior_price( $variation_id, true );
+
+		return is_numeric( $prior ) ? round( (float) $prior, wc_get_price_decimals() ) : null;
+	}
+
+	/**
+	 * Prior price note of Scheduled Sales, Discounts and Omnibus Price History for WooCommerce for the
+	 * variation shown.
+	 *
+	 * That plugin adds its note to the price of a variable product by itself,
+	 * for the cheapest variation, unless the price already carries one. Asking
+	 * for it here puts the note of the variation this plugin actually shows,
+	 * which in the "Up to" mode is the most expensive one, and keeps it to one.
+	 * The note comes from that plugin already escaped and following its own
+	 * settings (when to show it, where, and its text).
+	 *
+	 * @param int          $variation_id Shown variation.
+	 * @param string|float $price        Its active price, for display.
+	 * @param string|float $regular      Its regular price, for display.
+	 * @param WC_Product   $product      Variable product being displayed.
+	 * @return string Note HTML, or an empty string.
+	 */
+	private function ayudawp_msps_note( $variation_id, $price, $regular, $product ) {
+		if ( ! function_exists( 'ayudawp_msps_get_prior_price_note' ) || '' === $regular || (float) $regular <= (float) $price ) {
+			return '';
+		}
+
+		return wp_kses_post( (string) ayudawp_msps_get_prior_price_note( $variation_id, $product->get_id() ) );
 	}
 
 	/**
@@ -1072,29 +1182,24 @@ class AyudaWP_Lowest_Prices {
 	 *
 	 * These plugins track the lowest price of the last 30 days required by the EU
 	 * Omnibus Directive, which this plugin does not do. Detection is done against
-	 * the active plugins list to avoid guessing class or constant names.
+	 * the active plugins list to avoid guessing class or constant names, in the
+	 * order of the list below: Scheduled Sales, Discounts and Omnibus Price History goes first because
+	 * it is the one this plugin works with beyond sharing the price.
 	 *
-	 * @return string Plugin name, or an empty string when none is active.
+	 * @return string Plugin folder, or an empty string when none is active.
 	 */
 	private function ayudawp_get_price_history_plugin() {
-		$known = array(
-			'omnibus'               => 'Omnibus — show the lowest price',
-			'wc-price-history'      => 'WC Price History',
-			'product-price-history' => 'Product Price History for WooCommerce',
-			'fleekcode-omnibus'     => 'FleekCode – Omnibus Price Tracker',
-		);
-
 		$active = (array) get_option( 'active_plugins', array() );
 
 		if ( is_multisite() ) {
 			$active = array_merge( $active, array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) );
 		}
 
-		foreach ( $active as $plugin_file ) {
-			$folder = dirname( $plugin_file );
+		$active_folders = array_map( 'dirname', $active );
 
-			if ( isset( $known[ $folder ] ) ) {
-				return $known[ $folder ];
+		foreach ( array_keys( $this->ayudawp_price_history_plugins() ) as $folder ) {
+			if ( in_array( $folder, $active_folders, true ) ) {
+				return $folder;
 			}
 		}
 
@@ -1102,12 +1207,28 @@ class AyudaWP_Lowest_Prices {
 	}
 
 	/**
+	 * Known price history plugins.
+	 *
+	 * @return array Plugin folder => plugin name.
+	 */
+	private function ayudawp_price_history_plugins() {
+		return array(
+			'multiple-sale-prices-scheduler' => 'Scheduled Sales, Discounts and Omnibus Price History for WooCommerce',
+			'omnibus'                        => 'Omnibus — show the lowest price',
+			'wc-price-history'               => 'WC Price History',
+			'product-price-history'          => 'Product Price History for WooCommerce',
+			'fleekcode-omnibus'              => 'FleekCode – Omnibus Price Tracker',
+		);
+	}
+
+	/**
 	 * Notice explaining how this plugin coexists with a price history plugin.
 	 */
 	private function ayudawp_render_price_history_notice() {
-		$plugin_name = $this->ayudawp_get_price_history_plugin();
+		$folder  = $this->ayudawp_get_price_history_plugin();
+		$plugins = $this->ayudawp_price_history_plugins();
 
-		if ( '' === $plugin_name ) {
+		if ( '' === $folder ) {
 			return;
 		}
 		?>
@@ -1117,10 +1238,15 @@ class AyudaWP_Lowest_Prices {
 				printf(
 					/* translators: %s: name of the detected price history plugin. */
 					esc_html__( '%s is active on this site. Both plugins work together: this one decides which price replaces the WooCommerce range, and the other one adds the lowest price of the last 30 days required by the EU Omnibus Directive.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
-					esc_html( $plugin_name )
+					esc_html( $plugins[ $folder ] )
 				);
 				?>
 			</p>
+			<?php if ( 'multiple-sale-prices-scheduler' === $folder ) : ?>
+				<p>
+					<?php esc_html_e( 'The discount percentage is calculated on that prior price instead of the regular one, as EU rules require. If that plugin is set to cross out the prior price, the price shown here crosses out the prior price too.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
+				</p>
+			<?php endif; ?>
 			<p>
 				<?php esc_html_e( 'If the two messages end up in the wrong order, use the ayudawp_lowest_price_html filter to place them exactly where you want.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
 			</p>

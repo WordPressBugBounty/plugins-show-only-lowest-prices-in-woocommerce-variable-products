@@ -3,6 +3,13 @@ Show only lowest prices in variable products for WooCommerce — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.4.0 =
+* New: Works with Scheduled Sales, Discounts and Omnibus Price History for WooCommerce, from the same author, for the prior price of the EU Omnibus Directive. With it active, the discount percentage badge is calculated on the prior price (the lowest price of the 30 days before the sale) instead of the regular price, and no badge is shown when the sale price is not lower than the prior price
+* New: The prior price note of Scheduled Sales, Discounts and Omnibus Price History for WooCommerce goes right after the price, only once, and describes the variation shown, also in the "Up to" mode
+* New: When Scheduled Sales, Discounts and Omnibus Price History for WooCommerce crosses out the prior price, which it does by default, the price crosses out the prior price instead of the regular one, or nothing when the sale price is not lower than it
+* Improved: The settings page detects Scheduled Sales, Discounts and Omnibus Price History for WooCommerce, and the FAQ about the Omnibus Directive recommends it first
+* Improved: Tested up to WooCommerce 11.2
+
 = 2.3.0 =
 * New: Live preview in the settings page, showing how your price will read for three situations at once: variations at different prices, the variation shown on sale, and every variation at the same price. It updates as you change the options and follows the page while you scroll
 * Improved: Compatible with WordPress 7.1
