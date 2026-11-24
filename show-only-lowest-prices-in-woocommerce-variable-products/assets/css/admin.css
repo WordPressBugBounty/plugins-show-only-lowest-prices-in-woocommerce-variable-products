@@ -86,11 +86,44 @@
 }
 
 /* ==========================================================================
-   Price history plugin notice
+   Scheduled Sales recommendation and price history notice
    ========================================================================== */
 
+/* Recommendation of a sibling plugin of the AyudaWP family, with the same look
+   VigIA gives its recommendation of Visibility: orange while no plugin covers the
+   prior price, blue once one does. Only the left border is drawn: the other sides
+   have no style, so border-color only paints that one. */
 .ayudawp-lp-notice {
 	margin: 15px 0 0;
+	padding: 12px 15px;
+	border-left-width: 4px;
+	border-left-style: solid;
+}
+
+.ayudawp-lp-notice p {
+	margin: 0 0 8px;
+}
+
+.ayudawp-lp-notice p:last-child {
+	margin-bottom: 0;
+}
+
+.ayudawp-lp-notice-promo {
+	background: #fff4e5;
+	border-color: #e8842c;
+}
+
+.ayudawp-lp-notice-promo p {
+	color: #ad5800;
+}
+
+.ayudawp-lp-notice-info {
+	background: #f0f6fc;
+	border-color: #72aee6;
+}
+
+.ayudawp-lp-notice-info p {
+	color: #1d4ed8;
 }
 
 /* ==========================================================================

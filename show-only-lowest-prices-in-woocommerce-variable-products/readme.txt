@@ -4,7 +4,7 @@ Tags: woocommerce, variations, variable products, price, lowest price
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: GPLv2+
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -129,6 +129,13 @@ Yes, with the `ayudawp_lowest_price_html` filter. It receives the final price HT
 
 == Changelog ==
 
+= 2.4.1 =
+The settings page recommends Scheduled Sales, Discounts and Omnibus Price History for WooCommerce in the AyudaWP family style: a one-click install when no price history plugin is active, and a short summary with a link to its settings when it is.
+
+* Improved: With Scheduled Sales, Discounts and Omnibus Price History for WooCommerce active, the settings page sums up in one blue line how both plugins work together, with a link to its prior price settings
+* Improved: With no price history plugin active, an orange notice in the settings page recommends Scheduled Sales, Discounts and Omnibus Price History for WooCommerce, with a one-click install. Users who cannot install plugins get a link to its page on WordPress.org instead
+* Improved: With a price history plugin from another author active, the notice still explains how both plugins work together, and adds one line on what Scheduled Sales, Discounts and Omnibus Price History for WooCommerce shares with this plugin
+
 = 2.4.0 =
 Works with Scheduled Sales, Discounts and Omnibus Price History for WooCommerce for the EU Omnibus prior price: with it active, the discount badge is calculated on the lowest price of the last 30 days, and by default the crossed out price is that prior price.
 
@@ -142,8 +149,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.4.0 =
-Works with Scheduled Sales, Discounts and Omnibus Price History for WooCommerce for the EU Omnibus prior price: with it active, the discount badge is calculated on the lowest price of the last 30 days, and by default the crossed out price is that prior price.
+= 2.4.1 =
+The settings page recommends Scheduled Sales, Discounts and Omnibus Price History for WooCommerce in the AyudaWP family style: a one-click install when no price history plugin is active, and a short summary with a link to its settings when it is.
 
 == Support ==
 

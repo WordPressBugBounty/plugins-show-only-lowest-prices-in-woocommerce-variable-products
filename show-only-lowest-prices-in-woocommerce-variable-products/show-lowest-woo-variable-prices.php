@@ -4,12 +4,11 @@
  * Plugin URI: https://servicios.ayudawp.com
  * Description: Shows only the lowest price and sale in variable WooCommerce products with customizable prefix and advanced options.
  * Author: Fernando Tellado
- * Version: 2.4.0
+ * Version: 2.4.1
  * Author URI: https://ayudawp.com
  * Text Domain: show-only-lowest-prices-in-woocommerce-variable-products
  * Requires Plugins: woocommerce
  * Requires at least: 5.0
- * Tested up to: 7.1
  * Requires PHP: 7.4
  * WC requires at least: 4.0
  * WC tested up to: 11.2
@@ -23,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.4.0' );
+define( 'AYUDAWP_LOWEST_PRICES_VERSION', '2.4.1' );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_LOWEST_PRICES_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -1096,6 +1095,13 @@ class AyudaWP_Lowest_Prices {
 			AYUDAWP_LOWEST_PRICES_VERSION
 		);
 
+		// The Scheduled Sales recommendation opens its install screen in a modal
+		// (ayudawp_render_get_msps_link()), which only links there when it is
+		// missing and the reader can install plugins.
+		if ( ! defined( 'MSPS_VERSION' ) && current_user_can( 'install_plugins' ) ) {
+			add_thickbox();
+		}
+
 		wp_enqueue_script(
 			'ayudawp-lowest-prices-admin',
 			AYUDAWP_LOWEST_PRICES_PLUGIN_URL . 'assets/js/admin.js',
@@ -1178,13 +1184,13 @@ class AyudaWP_Lowest_Prices {
 	}
 
 	/**
-	 * Name of the active price history plugin, if any.
+	 * Name of the active price history plugin from another author, if any.
 	 *
 	 * These plugins track the lowest price of the last 30 days required by the EU
 	 * Omnibus Directive, which this plugin does not do. Detection is done against
 	 * the active plugins list to avoid guessing class or constant names, in the
-	 * order of the list below: Scheduled Sales, Discounts and Omnibus Price History goes first because
-	 * it is the one this plugin works with beyond sharing the price.
+	 * order of the list below. Scheduled Sales is not in it: it is detected by its
+	 * own constant (ayudawp_render_price_history_notice()).
 	 *
 	 * @return string Plugin folder, or an empty string when none is active.
 	 */
@@ -1207,50 +1213,153 @@ class AyudaWP_Lowest_Prices {
 	}
 
 	/**
-	 * Known price history plugins.
+	 * Known price history plugins from other authors.
 	 *
 	 * @return array Plugin folder => plugin name.
 	 */
 	private function ayudawp_price_history_plugins() {
 		return array(
-			'multiple-sale-prices-scheduler' => 'Scheduled Sales, Discounts and Omnibus Price History for WooCommerce',
-			'omnibus'                        => 'Omnibus — show the lowest price',
-			'wc-price-history'               => 'WC Price History',
-			'product-price-history'          => 'Product Price History for WooCommerce',
-			'fleekcode-omnibus'              => 'FleekCode – Omnibus Price Tracker',
+			'omnibus'               => 'Omnibus — show the lowest price',
+			'wc-price-history'      => 'WC Price History',
+			'product-price-history' => 'Product Price History for WooCommerce',
+			'fleekcode-omnibus'     => 'FleekCode – Omnibus Price Tracker',
 		);
 	}
 
 	/**
-	 * Notice explaining how this plugin coexists with a price history plugin.
+	 * Recommend Scheduled Sales, the sibling plugin for the EU Omnibus prior price.
+	 *
+	 * Same pattern VigIA uses to recommend Visibility, so the AyudaWP family
+	 * recommends its siblings in one way: an orange notice with a one-click
+	 * install while the prior price is not covered, and a blue one once it is.
+	 *   - Scheduled Sales active: blue, how both work together, and its settings.
+	 *   - Another price history plugin active: blue, how both work together, and
+	 *     one line on what Scheduled Sales adds. Not orange: that plugin already
+	 *     shows the prior price, so nothing is missing, and the shop chose it.
+	 *   - None of them: orange, what the pair does, and Get Scheduled Sales.
 	 */
 	private function ayudawp_render_price_history_notice() {
-		$folder  = $this->ayudawp_get_price_history_plugin();
-		$plugins = $this->ayudawp_price_history_plugins();
+		$name = 'Scheduled Sales';
 
-		if ( '' === $folder ) {
+		if ( defined( 'MSPS_VERSION' ) ) {
+			?>
+			<div class="ayudawp-lp-notice ayudawp-lp-notice-info">
+				<p>
+					<span class="dashicons dashicons-info-outline"></span>
+					<?php
+					echo wp_kses(
+						sprintf(
+							/* translators: %s: Scheduled Sales plugin name, in bold. */
+							__( '%s is active and takes care of the Omnibus prior price of your sales.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+							'<strong>' . esc_html( $name ) . '</strong>'
+						),
+						array( 'strong' => array() )
+					);
+
+					// Its public API arrived in 1.6.0. An older copy still prints its
+					// own note, but this plugin cannot read its prior price, so the
+					// percentage and the crossed out price stay on the regular one.
+					if ( function_exists( 'ayudawp_msps_get_prior_price' ) ) {
+						echo ' ';
+						esc_html_e( 'The discount percentage is calculated on that prior price instead of the regular one, as EU rules require. If that plugin is set to cross out the prior price, the price shown here crosses out the prior price too.', 'show-only-lowest-prices-in-woocommerce-variable-products' );
+					}
+
+					// Its settings screen asks for manage_woocommerce, like this one:
+					// the check keeps the rule next to the link if the notice moves.
+					if ( current_user_can( 'manage_woocommerce' ) ) {
+						?>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=multiple-sale-prices-scheduler&tab=settings' ) ); ?>">&rarr;&nbsp;<?php esc_html_e( 'Prior price settings', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?></a>
+						<?php
+					}
+					?>
+				</p>
+			</div>
+			<?php
+			return;
+		}
+
+		$folder = $this->ayudawp_get_price_history_plugin();
+
+		if ( '' !== $folder ) {
+			$plugins = $this->ayudawp_price_history_plugins();
+			?>
+			<div class="ayudawp-lp-notice ayudawp-lp-notice-info">
+				<p>
+					<span class="dashicons dashicons-info-outline"></span>
+					<?php
+					printf(
+						/* translators: %s: name of the detected price history plugin. */
+						esc_html__( '%s is active on this site. Both plugins work together: this one decides which price replaces the WooCommerce range, and the other one adds the lowest price of the last 30 days required by the EU Omnibus Directive.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+						esc_html( $plugins[ $folder ] )
+					);
+					?>
+				</p>
+				<p>
+					<?php esc_html_e( 'If the two messages end up in the wrong order, use the ayudawp_lowest_price_html filter to place them exactly where you want.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
+				</p>
+				<p>
+					<?php
+					echo wp_kses(
+						sprintf(
+							/* translators: %s: Scheduled Sales plugin name, in bold. */
+							__( '%s, from the same author, also shares its prior price with this plugin, so the discount percentage and the crossed out price can be based on it.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+							'<strong>' . esc_html( $name ) . '</strong>'
+						),
+						array( 'strong' => array() )
+					);
+					?>
+					<?php $this->ayudawp_render_get_msps_link( $name ); ?>
+				</p>
+			</div>
+			<?php
 			return;
 		}
 		?>
-		<div class="notice notice-info inline ayudawp-lp-notice">
+		<div class="ayudawp-lp-notice ayudawp-lp-notice-promo">
 			<p>
+				<span class="dashicons dashicons-tag"></span>
 				<?php
-				printf(
-					/* translators: %s: name of the detected price history plugin. */
-					esc_html__( '%s is active on this site. Both plugins work together: this one decides which price replaces the WooCommerce range, and the other one adds the lowest price of the last 30 days required by the EU Omnibus Directive.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
-					esc_html( $plugins[ $folder ] )
+				echo wp_kses(
+					sprintf(
+						/* translators: %s: Scheduled Sales plugin name, in bold. */
+						__( 'Let %s schedule your sales and show the lowest price of the last 30 days that the EU Omnibus Directive requires: this plugin can then base the discount percentage and the crossed out price on it.', 'show-only-lowest-prices-in-woocommerce-variable-products' ),
+						'<strong>' . esc_html( $name ) . '</strong>'
+					),
+					array( 'strong' => array() )
 				);
 				?>
-			</p>
-			<?php if ( 'multiple-sale-prices-scheduler' === $folder ) : ?>
-				<p>
-					<?php esc_html_e( 'The discount percentage is calculated on that prior price instead of the regular one, as EU rules require. If that plugin is set to cross out the prior price, the price shown here crosses out the prior price too.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
-				</p>
-			<?php endif; ?>
-			<p>
-				<?php esc_html_e( 'If the two messages end up in the wrong order, use the ayudawp_lowest_price_html filter to place them exactly where you want.', 'show-only-lowest-prices-in-woocommerce-variable-products' ); ?>
+				<?php $this->ayudawp_render_get_msps_link( $name ); ?>
 			</p>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Link that installs Scheduled Sales, or that shows it on WordPress.org.
+	 *
+	 * The install screen needs install_plugins, and on a network it only lives in
+	 * the network admin: on a subsite it redirects to the plugin list and drops the
+	 * plugin it was asked to show (wp-admin/plugin-install.php:18-25 in 7.1.5).
+	 * Whoever cannot install plugins gets the plugin page on WordPress.org. The
+	 * modal needs Thickbox, loaded under the same condition in
+	 * ayudawp_enqueue_admin_assets().
+	 *
+	 * @param string $name Scheduled Sales plugin name.
+	 */
+	private function ayudawp_render_get_msps_link( $name ) {
+		/* translators: %s: Scheduled Sales plugin name. */
+		$label = sprintf( __( 'Get %s', 'show-only-lowest-prices-in-woocommerce-variable-products' ), $name );
+
+		if ( current_user_can( 'install_plugins' ) ) {
+			$path = 'plugin-install.php?tab=plugin-information&plugin=multiple-sale-prices-scheduler&TB_iframe=true&width=772&height=618';
+			$url  = is_multisite() ? network_admin_url( $path ) : admin_url( $path );
+			?>
+			<a href="<?php echo esc_url( $url ); ?>" class="thickbox">&rarr;&nbsp;<?php echo esc_html( $label ); ?></a>
+			<?php
+			return;
+		}
+		?>
+		<a href="<?php echo esc_url( 'https://wordpress.org/plugins/multiple-sale-prices-scheduler/' ); ?>" target="_blank" rel="noopener">&rarr;&nbsp;<?php echo esc_html( $label ); ?></a>
 		<?php
 	}
 
